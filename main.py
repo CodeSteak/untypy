@@ -1,3 +1,4 @@
+import inspect
 from collections.abc import Callable
 
 import untypy
@@ -29,42 +30,32 @@ def baz(x: str) -> str:
     return x
 
 
+run = [
+    lambda: test(12, 34),
+    lambda: test(1, 2),
+    lambda: test("12", "34"),
+    lambda: test(12, 0),
+    lambda: test_wrong_ret(12, 0),
+    lambda: test_lst([1, 2, 2, 3], []),
+    lambda: test_lst([1, 2, 2, 3], [[1, '42']]),
+    lambda: foo(42, lambda x: x + 1),  # callers's fault
+    lambda: bar(42, lambda x: str(x + 1)),  # bar's fault
+    lambda: bar(42, baz),
+]
+
+
 def main():
-    print("\n\n---- test(12, 34)")
-    print("=> " + test(12, 34))
-
-    print("\n\n---- test(1, 2)")
-    print("=> " + test(1, 2))
-
-    print("\n\n---- test(\"12\", \"34\")")
-    print("=> " + test("12", "34"))
-
-    print("\n\n---- test(12, 0)")
-    print("=> " + test(12, 0))
-
-    print("\n\n---- test_wrong_ret(12, 0)")
-    print("=> " + str(test_wrong_ret(12, 0)))
-
-    print("\n\n---- test_lst([1,2,2,3], [])")
-    print("=> " + test_lst([1, 2, 2, 3], []))
-
-    print("\n\n---- test_lst([1, 2, 2, 3], [[1, '42']]))")
-    print("=> " + test_lst([1, 2, 2, 3], [[1, '42']]))
-
-    ###
-
-    print("\n\n----  foo(42, lambda x: x + 1)  [callers's fault]")
-    print("=> " + str(foo(42, lambda x: x + 1)))
-
-    print("\n\n----  foo(42, lambda x: x + 1)  [bar's fault]")
-    print("=> " + str(bar(42, lambda x: str(x + 1))))
-
-    print("\n\n----  bar(42, baz))  [type def error in lambba]")
-    print("=> " + str(bar(42, baz)))
-
-    ##
+    for expr in run:
+        try:
+            print(f"RUNNING: {inspect.getsource(expr).replace('lambda', '', 1).strip()}")
+            ret = expr()
+            print(f"= {ret} [OKAY]")
+        except TypeError:
+            pass
+        print("")
+        print("----")
 
 
 if __name__ == "__main__":
     untypy.enable()
-main()
+    main()
