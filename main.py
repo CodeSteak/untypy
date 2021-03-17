@@ -47,7 +47,7 @@ run = [
 def main():
     for expr in run:
         try:
-            print(f"RUNNING: {inspect.getsource(expr).replace('lambda', '', 1).strip()}")
+            print(f"RUNNING: {inspect.getsource(expr).replace('lambda:', '', 1).strip()}")
             ret = expr()
             print(f"= {ret} [OKAY]")
         except TypeError:
