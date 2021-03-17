@@ -46,6 +46,7 @@ class FunctionDecorator(Callable):
         self._argument_check = argument_check
         self._reti = reti
         self._ctx = ctx
+        self.__wrapped__ = True
 
     def __call__(self, *args, **kwargs):
         if len(args) != len(self._argument_check):

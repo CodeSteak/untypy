@@ -63,7 +63,10 @@ class FunctionDecorator(Callable):
 
     def __call__(self, *args, **kwargs):
         # TODO: varargs, kw
-        caller = inspect.stack()[1]
+        # TODO: Optimise?
+        stack = inspect.stack()[1:]  # first is this fn
+        caller = next((e for e in stack if not hasattr(e.function, '__wrapped__')), None)
+
         new_args = []
         for (arg, name) in zip(args, self.spec.args):
             check = self.argument_checks.get(name)
