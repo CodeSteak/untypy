@@ -50,7 +50,8 @@ def main():
             print(f"RUNNING: {inspect.getsource(expr).replace('lambda:', '', 1).strip()}")
             ret = expr()
             print(f"= {ret} [OKAY]")
-        except TypeError:
+        except TypeError as e:
+            print(e)
             pass
         print("")
         print("----")

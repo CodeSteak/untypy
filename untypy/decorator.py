@@ -4,9 +4,10 @@ from collections.abc import Callable
 from .typechecker import GlobalTypeManager
 from .typechecker.interfaces import *
 
-__all__ = ['wrap_function']
+__all__ = ['wrap_function', 'TodoTypeError']
 
 
+# TODO: Rewrite These Classes
 class TodoExecutionContext(IExecutionContext):
 
     def __init__(self, caller, argument=None, parent=None):
@@ -14,25 +15,35 @@ class TodoExecutionContext(IExecutionContext):
         self.parent = parent
         self.argument = argument
 
-    def blame(self, msg):
+    def blame(self, info):
         # TODO
-        print("FAILED")
+        msg = "TYPE ERROR \n"
+        responsable_line = None
+
         if isinstance(self.caller, inspect.FrameInfo):
-            print(f"{self.caller.filename[-9:]}:{self.caller.lineno} >> {self.caller.code_context[0].strip()}")
+            responsable_line = self.caller.code_context[0].strip()
+            msg += f"{self.caller.filename[-9:]}:{self.caller.lineno} >> {self.caller.code_context[0].strip()}\n"
         elif inspect.isfunction(self.caller):
-            print(f">> {inspect.getsource(self.caller)}")
+            msg += f">> {inspect.getsource(self.caller)}\n"
+            responsable_line = inspect.getsource(self.caller).split('\n')[0].strip()
         else:
-            print(f">> {self.caller}")
+            msg += f">> {self.caller}\n"
 
         if self.argument is not None:
-            print(f"in argument {self.argument}")
-        print(f"{msg}")
-        print(f" ")
+            msg += f"in argument {self.argument}\n"
+        msg += f"{info}\n\n"
 
-        raise TypeError()
+        # responsable_line is used in tests
+        raise TodoTypeError(msg, responsable_line)
 
     def rescope(self, fun: Callable, argument=None) -> IExecutionContext:
         return TodoExecutionContext(fun, argument, self)
+
+
+class TodoTypeError(TypeError):
+    def __init__(self, msg, responsable_line):
+        super().__init__(msg)
+        self.responsable_line = responsable_line
 
 
 class TodoCreationContext(ICreationContext):
