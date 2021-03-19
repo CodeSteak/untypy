@@ -18,6 +18,8 @@ class ExTest(unittest.TestCase):
             yield None  # trigger body
         except TodoTypeError as e:
             has_thrown = True
-            self.assertEqual(e.responsable_line.strip(), responsable_line.strip(), "Didn't assign blame correctly")
+            # Ignore whitespace in asserion
+            self.assertEqual(e.responsable_line.strip().replace(' ', ''), responsable_line.strip().replace(' ', ''),
+                             "Didn't assign blame correctly")
 
         self.assertTrue(has_thrown, "No type error was thrown")
