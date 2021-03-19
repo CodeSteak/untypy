@@ -1,3 +1,4 @@
+import inspect
 from collections.abc import Callable as AbcCallable
 from typing import Any, Optional, Callable
 
@@ -49,12 +50,24 @@ class FunctionDecorator(Callable):
         self.__wrapped__ = True
 
     def __call__(self, *args, **kwargs):
+        # TODO: varargs, kw
+        # TODO: Optimise?
+        stack = inspect.stack()[1:]  # first is this fn
+        caller = next((e for e in stack if not e.function == '__call__'), None)
+
         if len(args) != len(self._argument_check):
             self._ctx.blame(f"{len(args)} were given, but {len(self._argument_check)} expected in the type definition.")
 
         new_arg = []
         for (arg, checker) in zip(args, self._argument_check):
-            new_arg.append(checker.check(arg, self._ctx))
+            new_arg.append(checker.check(arg, self._ctx.rescope(caller)))
 
-        ret = self._fun(*new_arg, **kwargs)
-        return self._reti.check(ret, self._ctx.rescope(self._fun))
+        try:
+            ret = self._fun(*new_arg, **kwargs)
+        except TypeError as e:
+            if e.in_return:  # TODO refactor
+                raise e
+            else:
+                self._ctx.blame(f"the given function does not match signature.")
+
+        return self._reti.check(ret, self._ctx.rescope(self._fun, None, True))

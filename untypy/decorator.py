@@ -10,10 +10,11 @@ __all__ = ['wrap_function', 'TodoTypeError']
 # TODO: Rewrite These Classes
 class TodoExecutionContext(IExecutionContext):
 
-    def __init__(self, caller, argument=None, parent=None):
+    def __init__(self, caller, argument=None, parent=None, in_return=None):
         self.caller = caller
         self.parent = parent
         self.argument = argument
+        self.in_return = in_return
 
     def blame(self, info):
         # TODO
@@ -34,15 +35,16 @@ class TodoExecutionContext(IExecutionContext):
         msg += f"{info}\n\n"
 
         # responsable_line is used in tests
-        raise TodoTypeError(msg, responsable_line)
+        raise TodoTypeError(msg, responsable_line, self.in_return)
 
-    def rescope(self, fun: Callable, argument=None) -> IExecutionContext:
-        return TodoExecutionContext(fun, argument, self)
+    def rescope(self, fun: Callable, argument=None, in_return=None) -> IExecutionContext:
+        return TodoExecutionContext(fun, argument, self, in_return)
 
 
 class TodoTypeError(TypeError):
-    def __init__(self, msg, responsable_line):
+    def __init__(self, msg, responsable_line, in_return):
         super().__init__(msg)
+        self.in_return = in_return
         self.responsable_line = responsable_line
 
 
@@ -76,7 +78,7 @@ class FunctionDecorator(Callable):
         # TODO: varargs, kw
         # TODO: Optimise?
         stack = inspect.stack()[1:]  # first is this fn
-        caller = next((e for e in stack if not hasattr(e.function, '__wrapped__')), None)
+        caller = next((e for e in stack if not e.function == '__call__'), None)
 
         new_args = []
         for (arg, name) in zip(args, self.spec.args):
@@ -88,6 +90,6 @@ class FunctionDecorator(Callable):
         ret = self.fun(*new_args, **kwargs)
         check = self.argument_checks.get("return")
         if check is not None:
-            return check.check(ret, TodoExecutionContext(self.fun))
+            return check.check(ret, TodoExecutionContext(self.fun, None, None, True))
         else:
             return ret

@@ -8,6 +8,6 @@ __all__ = ['IExecutionContext']
 class IExecutionContext:
     def blame(self, param):
         raise NotImplementedError
-    
-    def rescope(self, fun: Callable, argument=None) -> IExecutionContext:
+
+    def rescope(self, fun: Callable, argument=None, in_return=None) -> IExecutionContext:
         raise NotImplementedError
