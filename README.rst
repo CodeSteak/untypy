@@ -10,5 +10,6 @@ Tests
 
 run tests with:
 
-.. code:: sh
+.. code:: bash
+
     python -m unittest discover
