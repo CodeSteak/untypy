@@ -1,8 +1,11 @@
 import unittest
 from contextlib import contextmanager
+from typing import Callable
 
 from untypy.decorator import TodoTypeError
+from untypy.typechecker.interfaces import IExecutionContext
 
+__all__ = ['ExTest', 'Context']
 
 class ExTest(unittest.TestCase):
 
@@ -23,3 +26,11 @@ class ExTest(unittest.TestCase):
                              "Didn't assign blame correctly")
 
         self.assertTrue(has_thrown, "No type error was thrown")
+
+
+class Context(IExecutionContext):
+    def blame(self, param):
+        raise TypeError
+
+    def rescope(self, fun: Callable, argument=None, in_return=None) -> IExecutionContext:
+        return self

@@ -1,6 +1,6 @@
-from .lambdachecker import LambdaFactory
-from .listchecker import ListFactory
-from .typechecker import TypeFactory
+from .lambda_checker import LambdaFactory
+from .list_checker import ListFactory
+from .simple_type_checker import TypeFactory
 
 AllFactoriesInOrder = [
     LambdaFactory(),

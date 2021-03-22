@@ -49,3 +49,4 @@ class TestHigherOrderFn(ExTest):
     def test_positive_cases(self):
         correct(5, lambda x: str(x))
         correct(6, baz)
+
