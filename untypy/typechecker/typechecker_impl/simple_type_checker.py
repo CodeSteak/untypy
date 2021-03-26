@@ -22,4 +22,4 @@ class Checker(ITypeChecker):
         if issubclass(type(arg), self.ty):
             return arg
         else:
-            ctx.blame(f"has class {type(arg)}, this class is not a subclass of {self.ty}.")
+            ctx.blame(f"has class {type(arg)}, this class is not a subclass of {self.ty}.", self.ty)

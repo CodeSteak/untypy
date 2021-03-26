@@ -1,7 +1,9 @@
+import inspect
 from types import GenericAlias
 from typing import Any, Optional
 
 from ..interfaces import *
+from ... import UntypyError
 
 
 class ListFactory(ITypeCheckerFactory):
@@ -24,7 +26,7 @@ class Checker(ITypeChecker):
         if issubclass(type(arg), list):
             return TypedList(arg, self.inner, ctx)
         else:
-            ctx.blame(f"has class {type(arg)}, this class is not a subclass of list.")
+            ctx.blame(f"has class {type(arg)}, this class is not a subclass of list.", list)
 
 
 class TypedList(list):
@@ -40,23 +42,40 @@ class TypedList(list):
 
     # Perform type check
     def __getitem__(self, index):
-        if type(index) is int:
-            # list[1], flat get
-            ret = self.inner.__getitem__(index)
-            return self.checker.check(ret, self.ctx)
-        else:
-            # returned structure is an list itself.
-            # e.g. list[1:3, ...]
-            return list(map(lambda x: self.checker.check(x, self.ctx), self.inner.__getitem__(index)))
+        try:
+            if type(index) is int:
+                # list[1], flat get
+                ret = self.inner.__getitem__(index)
+                return self.checker.check(ret, self.ctx)
+            else:
+                # returned structure is an list itself.
+                # e.g. list[1:3, ...]
+                return list(map(lambda x: self.checker.check(x, self.ctx), self.inner.__getitem__(index)))
+        except UntypyError as e:
+            self.ctx.blame_with_previous(e, 'inside list', list)
 
     def append(self, x) -> None:
-        self.inner.append(self.checker.check(x, self.ctx))
+        # Caller of append is responsable.
+
+        stack = inspect.stack()[1:]  # first is this fn
+        caller = next((e for e in stack if not e.function == '__call__'), None)
+
+        self.inner.append(self.checker.check(x, self.ctx.rescope(caller, argument='item')))
 
     def extend(self, iterable) -> None:
-        return self.inner.extend(list(map(lambda x: self.checker.check(x, self.ctx), iterable)))
+        # Caller of this is responsable.
+
+        stack = inspect.stack()[1:]  # first is this fn
+        caller = next((e for e in stack if not e.function == '__call__'), None)
+
+        return self.inner.extend(list(map(lambda x: self.checker.check(x, self.ctx.rescope(caller, argument='item')), iterable)))
 
     def insert(self, index, obj) -> None:
-        return self.inner.insert(index, self.checker.check(obj, self.ctx))
+
+        stack = inspect.stack()[1:]  # first is this fn
+        caller = next((e for e in stack if not e.function == '__call__'), None)
+
+        return self.inner.insert(index, self.checker.check(obj.rescope(caller, argument='item'), self.ctx))
 
     def __iadd__(self, other):
         self.extend(other)

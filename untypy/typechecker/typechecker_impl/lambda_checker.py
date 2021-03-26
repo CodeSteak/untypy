@@ -3,6 +3,7 @@ from collections.abc import Callable as AbcCallable
 from typing import Any, Optional, Callable
 
 from ..interfaces import *
+from ... import UntypyError
 
 
 class LambdaFactory(ITypeCheckerFactory):
@@ -62,12 +63,13 @@ class FunctionDecorator(Callable):
         for (arg, checker) in zip(args, self._argument_check):
             new_arg.append(checker.check(arg, self._ctx.rescope(caller)))
 
+        ret = None
         try:
             ret = self._fun(*new_arg, **kwargs)
-        except TypeError as e:
-            if e.in_return:  # TODO refactor
-                raise e
+        except UntypyError as e:
+            if e.was_in_return():  # TODO refactor
+                self._ctx.blame_with_previous(e)
             else:
-                self._ctx.blame(f"the given function does not match signature.")
+                self._ctx.blame_with_previous(e, f"the given function does not match signature.")
 
         return self._reti.check(ret, self._ctx.rescope(self._fun, None, True))

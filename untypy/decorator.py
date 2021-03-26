@@ -1,11 +1,13 @@
+from __future__ import annotations
 import inspect
 from collections.abc import Callable
+from typing import Optional, Any
 
+from .error import *
 from .typechecker import GlobalTypeManager
 from .typechecker.interfaces import *
 
-__all__ = ['wrap_function', 'TodoTypeError']
-
+__all__ = ['wrap_function']
 
 # TODO: Rewrite These Classes
 class TodoExecutionContext(IExecutionContext):
@@ -16,36 +18,30 @@ class TodoExecutionContext(IExecutionContext):
         self.argument = argument
         self.in_return = in_return
 
-    def blame(self, info):
-        # TODO
-        msg = "TYPE ERROR \n"
-        responsable_line = None
-
-        if isinstance(self.caller, inspect.FrameInfo):
-            responsable_line = self.caller.code_context[0].strip()
-            msg += f"{self.caller.filename[-9:]}:{self.caller.lineno} >> {self.caller.code_context[0].strip()}\n"
-        elif inspect.isfunction(self.caller):
-            msg += f">> {inspect.getsource(self.caller)}\n"
-            responsable_line = inspect.getsource(self.caller).split('\n')[0].strip()
+    def _create_frame(self, typ, info) -> UntypyFrame:
+        argument_name = None
+        if self.in_return:
+            argument_name = 'return'
         else:
-            msg += f">> {self.caller}\n"
+            argument_name = self.argument
 
-        if self.argument is not None:
-            msg += f"in argument {self.argument}\n"
-        msg += f"{info}\n\n"
+        return UntypyFrame(
+            info=info,
+            typ=typ,
+            callsite=self.caller,
+            argument_name=argument_name
+        )
 
-        # responsable_line is used in tests
-        raise TodoTypeError(msg, responsable_line, self.in_return)
+    def blame(self, info, typ=None):
+        frame = self._create_frame(typ, info)
+        raise UntypyError([frame])
+
+    def blame_with_previous(self, e, info=None, typ=None):
+        frame = self._create_frame(typ, info)
+        raise e.with_frame(frame)
 
     def rescope(self, fun: Callable, argument=None, in_return=None) -> IExecutionContext:
         return TodoExecutionContext(fun, argument, self, in_return)
-
-
-class TodoTypeError(TypeError):
-    def __init__(self, msg, responsable_line, in_return):
-        super().__init__(msg)
-        self.in_return = in_return
-        self.responsable_line = responsable_line
 
 
 class TodoCreationContext(ICreationContext):

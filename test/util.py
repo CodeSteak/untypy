@@ -2,7 +2,7 @@ import unittest
 from contextlib import contextmanager
 from typing import Callable
 
-from untypy.decorator import TodoTypeError
+from untypy.error import UntypyError
 from untypy.typechecker.interfaces import IExecutionContext
 
 __all__ = ['ExTest', 'Context']
@@ -19,10 +19,10 @@ class ExTest(unittest.TestCase):
         has_thrown = False
         try:
             yield None  # trigger body
-        except TodoTypeError as e:
+        except UntypyError as e:
             has_thrown = True
             # Ignore whitespace in asserion
-            self.assertEqual(e.responsable_line.strip().replace(' ', ''), responsable_line.strip().replace(' ', ''),
+            self.assertEqual(e.single_line_code_representation().strip().replace(' ', ''), responsable_line.strip().replace(' ', ''),
                              "Didn't assign blame correctly")
 
         self.assertTrue(has_thrown, "No type error was thrown")
