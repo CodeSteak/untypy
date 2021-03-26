@@ -33,7 +33,7 @@ def _monkey_patch_functions(mod: ModuleType):
         if not inspect.isfunction(member):
             continue
         setattr(mod, name, wrap_function(member))
-        print(f"DBG: patched {name}")
+        # print(f"DBG: patched {name}")
 
 
 def _monkey_patch_classes(mod: ModuleType):
