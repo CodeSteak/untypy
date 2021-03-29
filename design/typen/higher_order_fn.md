@@ -21,7 +21,7 @@ def bar(f : Callable[[B],None]) -> None:
 
 bar(foo())
 ```
-Jenach Art der Contract-Violation kann so eine Code-Stelle verantwortlich gemacht werden.
+Je nach Art der Contract-Violation kann so eine Code-Stelle verantwortlich gemacht werden.
 
 
 ## Problem durch diesen Ansatz:

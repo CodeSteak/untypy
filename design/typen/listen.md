@@ -14,7 +14,8 @@ Contra:
 
 
 ### V2
-Bei der Übergabe wird die Liste durch iteriert und gechecked und Callables etc. werden gewrapped.
+Bei der Übergabe wird die Liste durch iteriert und gechecked, Callables etc. werden gewrapped. 
+Das Ergebnis wird in eine neue Liste geschrieben, welche dann übergeben wird.
 
 Pro:
 - Komplexe Typen können gechecked werden
@@ -38,7 +39,7 @@ Contra:
 # Bsp:
 ```python
 class Foo:
-    def foo(self, f : list[Callable[[int], str])
+    def foo(self, f : list[Callable[[int], str]) -> None:
         self.f = f
 
     def bar(self):
@@ -57,5 +58,5 @@ foo.bar()
 # => V3 'hello world' ( + Typechecking)
 ```
 
-# Was nutzen andere Python Libs:
+## Was nutzen andere Python Libs:
 ...

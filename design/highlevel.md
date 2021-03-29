@@ -64,8 +64,8 @@ anpassen zu können.
 
 ## Checken nur zwischen Modulgrenzen (Maybe TODO)
 Grober Ansatz hier: Mittels custom Import-Statement wird ein neues Modul erzeugt, welches Funktionen des Inneren, eigentlich 
-importieren, Modul aufruft und Typechecked. 
-Instanzen von Klassen werden ebefalls gewrappt und rufen ihre innere Instanz auf.
+importierten, Modul aufruft und Typechecked. 
+Instanzen von Klassen werden ebenfalls gewrappt und rufen ihre innere Instanz auf.
 Es wäre denkbar diese Klassen dynamisch zur Laufzeit zu erzeugen und zu cachen. 
 
 
@@ -81,19 +81,23 @@ class ITypeChecker:
         ... 
 ```
 Idee: Callables, Listen Etc. müssen gewrapped werden. `check` returned das zu Überprüfende `arg` oder die gewrappte
-Version davon, welche dann die "echte" Implementierung übergeben werden soll.
+Version davon, welche dann an die "eigentliche" Implementierung übergeben werden soll.
 
-Das `ctx`-Argument wird verwendet, um Typfehler auszulösen: Entweder direkt beim Aufruf (Einfache Type) oder später bei
-gewrappen typen.
+Das `ctx`-Argument wird verwendet, um Typfehler auszulösen: Entweder direkt beim Aufruf (Einfache Type) oder später in
+den gewrappen typen, sobald fehler festgestellt werden.
 
 Im Fehlerfall wird eine Exception geworfen. (Mehr -> error.md)
 
-Um den passenden Typechecker für einen in der Methodendefinition passenden Typ auszuwählen, 
+ITypeChecker können auch verschachtelt werden. So verwendet z.B. der Checker für `list[int]` intern Checker für 
+einfache Typen. Im Fehlerfall des inneren Checkers können Exeptions abgefangen werden und durch Informationen 
+ergänzt werden. 
+
+Um den passenden Typechecker für einen in der Methodendefinition Typ auszuwählen, 
 wird eine globale List durch iteriert, jeder Checker (via `ITypeCheckerFactory`) kann auf eine Annotation
 reagieren. Der erste passende Typechecker wird verwendet.
 
 
-### Probleme des Wrapings:
+### Probleme des Wrappings:
 
 Identität eines Python-Objektes bleibt nicht erhalten, wenn gewrapped wird:
 ```python
@@ -124,13 +128,6 @@ foo(Y)
 
 Dieses Verhalten tritt jedoch nicht bei "gewöhnlichen" Objektes des Anweders auf, da diese nicht gewrapped werden.
 
-Bei verwendung von `==` anstelle von `is` ist dieses Verhalten vermeidbar. (TODO: Double, Unittest für überschriebene eq)
- 
-## Funktionsaufruf
-
-Der Funktion-Wrapper wrappt auch die Argumente und Return-Value bevor diese an die eigentliche implementierung 
-weiter geben werden.
-
-Von ITypeChecker geworfene Fehler werden mittels des `ctx` ergänzt und erneut geworfen.
+Bei verwendung von `==` anstelle von `is` ist dieses Verhalten vermeidbar. (TODO: Double Check via Unittest)
 
 <!-- Zuständigkeiten erleutern -->
