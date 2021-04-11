@@ -1,61 +1,97 @@
 from __future__ import annotations
 
 import inspect
-from typing import Optional, Any
+from typing import Any, Optional, Tuple
 
-__all__ = ['UntypyFrame', 'UntypyError']
 
-class UntypyFrame:
-    info: Optional[str]
-    typ: Optional[type]
-    callsite: Optional[Any]
-    argument_name: str
+class Frame:
+    type_declared: str
+    indicator_line: str
 
-    def __init__(self, info=None, typ=None, callsite=None, argument_name=None):
-        self.info = info
-        self.type = typ
-        self.callsite = callsite
-        self.argument_name = argument_name
+    file: Optional[str]
+    line_no: Optional[int]
+    source_line: Optional[str]
 
-    def __repr__(self) -> str:
-        msg = ""
-        if isinstance(self.callsite, inspect.FrameInfo):
-            msg += f"{self.callsite.filename[-20:]}:{self.callsite.lineno} >> {self.callsite.code_context[0].strip()}\n\n"
-        elif inspect.isfunction(self.callsite):
-            msg += f">> {inspect.getsource(self.callsite)}\n\n"
+    def __init__(self, type_declared: str, indicator_line: str, file: Optional[str], line_no: Optional[int],
+                 source_line: Optional[str]):
+        self.type_declared = type_declared
+        self.indicator_line = indicator_line
+        self.file = file
+        self.line_no = line_no
+        self.source_line = source_line
+
+    def __str__(self):
+        buf = f"in: {self.type_declared}\n" \
+              f"    {self.indicator_line}\n"
+
+        if self.file is not None and self.line_no is not None and self.source_line is not None:
+            buf += f"{self.file}:{self.line_no}:\n" \
+                   f"{self.source_line}\n" \
+                   f"\n"
+        return buf
+
+
+class UntypyTypeError(TypeError):
+    given: Any
+    expected: str
+    expected_indicator: str
+    frames: list[Frame]
+
+    def __init__(self, given: Any, expected: str, expected_indicator: Optional[str] = None, frames: list[Frame] = []):
+        super().__init__(f"given: {given}\n"
+                         f"expected: {expected}\n\n" +
+                         ('\n'.join(map(str, frames))))
+        self.given = given
+        self.expected = expected
+        if expected_indicator is None:
+            expected_indicator = "^" * len(expected)
+
+        self.expected_indicator = expected_indicator
+        self.frames = frames.copy()
+
+    def next_type_and_indicator(self) -> Tuple[str, str]:
+        if len(self.frames) >= 1:
+            frame = self.frames[-1]
+            return frame.type_declared, frame.indicator_line
         else:
-            msg += f">> {self.callsite}\n\n"
-        if self.argument_name == 'return':
-            msg += "in return value\n"
-        else:
-            msg += f"in argument {self.argument_name}\n"
+            return self.expected, "^" * len(self.expected)
 
-        if self.info is not None:
-            msg += f"\t {self.info}"
-        return msg
+    def with_frame(self, frame: Frame) -> UntypyTypeError:
+        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame])
 
-    def single_line_code_representation(self) -> str:
-        responsable_line = None
-        if isinstance(self.callsite, inspect.FrameInfo):
-            responsable_line = self.callsite.code_context[0].strip()
-        elif inspect.isfunction(self.callsite):
-            responsable_line = inspect.getsource(self.callsite).split('\n')[0].strip()
-
-        return responsable_line
+    def __str__(self):
+        return f"given: {self.given}\n" \
+               f"expected: {self.expected}\n\n" + \
+               ('\n'.join(map(str, self.frames)))
 
 
-class UntypyError(TypeError):
-    frames: list[UntypyFrame]
+class UntypyAttributeError(AttributeError):
+    pass
 
-    def __init__(self, frames: list[UntypyFrame]):
-        super().__init__("TypeError: \n" + str(frames))
-        self.frames = frames
-
-    def with_frame(self, frame: UntypyFrame) -> UntypyError:
-        return UntypyError(self.frames + [frame])
-
-    def single_line_code_representation(self):
-        return self.frames[0].single_line_code_representation()
-
-    def was_in_return(self) -> bool:
-        return self.frames[0].argument_name == 'return'
+# given: 43
+# but expected: str
+# in the contract of foo (file.py, line 2)
+#
+# def foo(i: int, fun: Callable[[int], str]) -> List[str]:
+#                                      ^^^
+#
+# The contract violation was triggered by the code calling foo (file.py, line 6)
+# print(’Not OK: ’ + str(foo(42, inc)))
+#                                ^^^
+#
+#
+# /////////////////////////////////////////////////
+# given: 42
+# but expected: str
+#
+# in the contract of foo (file.py, line 2)
+#
+# def bar(xx : int) -> Callable[[int], str]
+#                                      ^^^
+# caused by (file.py, line 2)
+#
+# return lambda x: x
+#        ^^^^^^^^^^^
+#
+# The contract violation was triggered by the code calling foo (file.py, line 6)
+#     <Stacktrace>
