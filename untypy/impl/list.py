@@ -1,5 +1,4 @@
 from types import GenericAlias
-
 from untypy.error import UntypyTypeError, Frame
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from typing import Any, Optional, Union
@@ -30,15 +29,18 @@ class ListChecker(TypeChecker):
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
         if not issubclass(type(arg), list):
             raise ctx.wrap(UntypyTypeError(arg, self.describe()))
-        new_list = []
-        for item in arg:
-            res = self.inner.check_and_wrap(item, ListExecutionContext(ctx))
-            new_list.append(res)
 
-        return new_list
+        # TODO: Identity Crises
+
+        #new_list = []
+        for item in arg:
+            self.inner.check_and_wrap(item, ListExecutionContext(ctx))
+            #new_list.append(res)
+
+        return arg
 
     def describe(self) -> str:
-        return f"List[{self.inner.describe()}]"
+        return f"list[{self.inner.describe()}]"
 
 
 class ListExecutionContext(ExecutionContext):
@@ -49,8 +51,8 @@ class ListExecutionContext(ExecutionContext):
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
         err = err.with_frame(Frame(
-                f"List[{err.expected}]",
-                (" "*len("List[") + err.expected_indicator),
+                f"list[{err.expected}]",
+                (" "*len("list[") + err.expected_indicator),
                 None,
                 None,
                 None

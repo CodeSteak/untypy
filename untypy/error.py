@@ -60,7 +60,7 @@ class UntypyTypeError(TypeError):
         return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame])
 
     def __str__(self):
-        return f"given: {self.given}\n" \
+        return f"\ngiven: {self.given}\n" \
                f"expected: {self.expected}\n\n" + \
                ('\n'.join(map(str, self.frames)))
 
