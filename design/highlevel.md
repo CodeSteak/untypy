@@ -130,4 +130,15 @@ Dieses Verhalten tritt jedoch nicht bei "gewöhnlichen" Objektes des Anweders au
 
 Bei verwendung von `==` anstelle von `is` ist dieses Verhalten vermeidbar. (TODO: Double Check via Unittest)
 
-<!-- Zuständigkeiten erleutern -->
+<!-- Zuständigkeiten erleutern --
+
+
+## Andere Libs:
+### Typeguard:
+Entweder: 
+```
+typeguard.importhook.install_import_hook()
+```
+- no code changes required in target modules
+
+oder pro funktion via Decorator.

@@ -58,5 +58,63 @@ foo.bar()
 # => V3 'hello world' ( + Typechecking)
 ```
 
+Problem: 
+Wenn Refenzen gespeichert werden ist es keine "normale" liste. 
+
+### V4
+
+Bei der Übergabe werden in der Liste die Items ausgetauscht. 
+Aus einem "normalen" Callable wird Wrapped-Callable.
+
+```python
+
+def a(lst : list[Callable[[Any], None]]):
+  pass
+
+
+def b(lst : list[Callable[[int], None]]):
+  pass
+
+lst = [...]
+a(lst)
+b(lst)
+a(lst)
+b(lst)
+```
+Bei einer trivialen Implementierung würde im Beispiel jedes Callable mehrfach gewrapped.
+
+Lösung:
+Typen müssen vereinigt werden können:
+also z.B. Callable[[Any], None] + Callable[[int], None] --> Callable[[And[Any,int]], None]
+
+Weiteres Problem:
+Diese Lösung funktioniert nur, wenn es sich um "normale" Funktionen oder lambda expressions handelt.
+Wenn andere Objekte, die Callable implementieren, gewrapt werden, können möglicherweise andere Funktionen
+nicht mehr aufgerufen werden:
+
+```python
+class A:
+  def __call__(self, *args, **kwargs):
+    pass
+    
+  def something(self):
+    pass
+
+def foo(lst : list[Callable[[], None]]):
+  pass
+  
+lst = [A()]
+lst[0].something() # Okay
+foo(lst)
+lst[0].something() # Method Not Found
+```
+
+Idee 1: Nur einfache Funktionen wrappen.
+Idee 2: getitem und setitem nutzen, um aufs innere Obj. zuzugreifen, jedoch kann es bei `type(lst[0])` zu problemen 
+kommen, daher ungeeignet.
+Idee 3: `__call__` von A überschreiben.
+Idee 4: Dynamisch zur Laufzeit Subklasse von A erstellen, mit modifizietem `__call__`
+
 ## Was nutzen andere Python Libs:
-...
+ - Bearlib: Scheint kein wrapping zu machen. Erreicht O(1) für listen, dadurch, dass nur stichprobenartig überprüft wird
+ - 
