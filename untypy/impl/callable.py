@@ -85,6 +85,7 @@ class TypedCallable(Callable):
 
         ret = self.inner(*new_args, **kwargs)
         ret = self.return_checker.check_and_wrap(ret, TypedCallableReturnExecutionContext(self.ctx, self))
+        return ret
 
 
 class TypedCallableReturnExecutionContext(ExecutionContext):
