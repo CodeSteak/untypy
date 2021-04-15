@@ -29,9 +29,6 @@ _FactoryList = [
 class DefaultCreationContext(CreationContext):
 
     def find_checker(self, annotation: Any) -> Optional[TypeChecker]:
-        print(annotation)
-        print(issubclass(type(annotation), GenericAlias))
-        print("---")
         for fac in _FactoryList:
             res = fac.create_from(annotation=annotation, ctx=self)
             if res is not None:
