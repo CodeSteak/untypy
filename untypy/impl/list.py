@@ -1,3 +1,4 @@
+import inspect
 from types import GenericAlias
 from untypy.error import UntypyTypeError, Frame
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
@@ -43,14 +44,35 @@ class ListExecutionContext(ExecutionContext):
         self.upper = upper
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        next_type, indicator = err.next_type_and_indicator()
+
         err = err.with_frame(Frame(
-            f"list[{err.expected}]",
-            (" " * len("list[") + err.expected_indicator),
-            None,
-            None,
-            None
-        ))
+                f"list[{next_type}]",
+                (" " * len("list[") + indicator),
+                None,
+                None,
+                None
+            ))
         return self.upper.wrap(err)
+
+
+class ListCallerExecutionContext(ExecutionContext):
+    stack: inspect.FrameInfo
+
+    def __init__(self, stack: inspect.FrameInfo):
+        self.stack = stack
+
+    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        next_type, indicator = err.next_type_and_indicator()
+        return err.with_frame(Frame(
+            f"list[{next_type}]",
+            (" " * len("list[") + indicator),
+            file=self.stack.filename,
+            line_no=self.stack.lineno,
+            source_line=self.stack.code_context[0]
+        ))
+
+
 
 
 class TypedList(list):
@@ -79,22 +101,51 @@ class TypedList(list):
         return TypedListIterator(self)
 
     def append(self, x) -> None:
-        self.inner.append(self.checker.check_and_wrap(x, self.ctx))
+        # first is this fn
+        stack = inspect.stack()[1:]
+        # Use Callers of Callables
+        caller = next((e for e in stack if not e.function == '__call__'), None)
+        ctx = ListCallerExecutionContext(caller)
+        self.inner.append(self.checker.check_and_wrap(x, ctx))
 
     def extend(self, iterable) -> None:
-        return self.inner.extend(list(map(lambda x: self.checker.check_and_wrap(x, self.ctx), iterable)))
+        # first is this fn
+        stack = inspect.stack()[1:]
+        # Use Callers of Callables
+        caller = next((e for e in stack if not e.function == '__call__'), None)
+        ctx = ListCallerExecutionContext(caller)
+        return self.inner.extend(list(map(lambda x: self.checker.check_and_wrap(x, ctx), iterable)))
 
     def insert(self, index, obj) -> None:
-        return self.inner.insert(index, self.checker.check_and_wrap(obj, self.ctx))
+        # first is this fn
+        stack = inspect.stack()[1:]
+        # Use Callers of Callables
+        caller = next((e for e in stack if not e.function == '__call__'), None)
+        ctx = ListCallerExecutionContext(caller)
+
+        return self.inner.insert(index, self.checker.check_and_wrap(obj, ctx))
 
     def __iadd__(self, other):
-        self.extend(other)
+        # first is this fn
+        stack = inspect.stack()[1:]
+        # Use Callers of Callables
+        caller = next((e for e in stack if not e.function == '__call__'), None)
+        ctx = ListCallerExecutionContext(caller)
+
+        self.inner.extend(list(map(lambda x: self.checker.check_and_wrap(x, ctx), other)))
         return self
 
-    def __setitem__(self, *args, **kwargs):
-        return self.inner.__setitem__(*args, **kwargs)
+    def __setitem__(self, idx, value):
+        # first is this fn
+        stack = inspect.stack()[1:]
+        # Use Callers of Callables
+        caller = next((e for e in stack if not e.function == '__call__'), None)
+        ctx = ListCallerExecutionContext(caller)
+
+        return self.inner.__setitem__(idx, self.checker.check_and_wrap(value, ctx))
 
     def __add__(self, *args, **kwargs):
+        # Caller Context
         return self.inner.__add__(*args, **kwargs)
 
     def pop(self, *args, **kwargs):
@@ -170,6 +221,9 @@ class TypedList(list):
 
     def __sizeof__(self, *args, **kwargs):
         return self.inner.__sizeof__(*args, **kwargs)
+
+    def __str__(self):
+        return self.inner.__str__()
 
 
 class TypedListIterator:
