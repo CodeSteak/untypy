@@ -18,3 +18,6 @@ class AnyChecker(TypeChecker):
 
     def describe(self) -> str:
         return "Any"
+
+    def base_type(self) -> type:
+        return [Any]

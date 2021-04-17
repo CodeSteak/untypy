@@ -21,3 +21,6 @@ class NoneChecker(TypeChecker):
 
     def describe(self) -> str:
         return "None"
+
+    def base_type(self) -> list[Any]:
+        return [None]

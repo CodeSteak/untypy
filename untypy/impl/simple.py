@@ -26,3 +26,6 @@ class SimpleChecker(TypeChecker):
 
     def describe(self) -> str:
         return self.annotation.__name__
+
+    def base_type(self) -> Any:
+        return [self.annotation]

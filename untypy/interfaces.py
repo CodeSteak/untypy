@@ -20,8 +20,11 @@ class TypeChecker:
     def describe(self) -> str:
         raise NotImplementedError
 
-    def may_change_identity(self) -> bool:
+    def may_be_wrapped(self) -> bool:
         return False
+
+    def base_type(self) -> list[Any]:
+        raise NotImplementedError
 
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
         raise NotImplementedError

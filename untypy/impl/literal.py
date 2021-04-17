@@ -29,5 +29,8 @@ class LiteralChecker(TypeChecker):
                 self.describe()
             ))
 
+    def base_type(self) -> list[Any]:
+        return self.inner[:]
+
     def describe(self) -> str:
         return f"Literal[{str(self.inner)}]"

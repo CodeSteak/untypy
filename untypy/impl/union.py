@@ -1,6 +1,8 @@
-from untypy.error import UntypyTypeError
+from untypy.error import UntypyTypeError, UntypyAttributeError
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from typing import Any, Optional, Union, Literal
+
+from untypy.util import CompoundTypeExecutionContext
 
 UnionType = type(Union[int, str])
 
@@ -27,9 +29,22 @@ class UnionChecker(TypeChecker):
 
     def __init__(self, inner: list[TypeChecker]):
         self.inner = inner
+        dups = dict()
+        for checker in inner:
+            for base_type in checker.base_type():
+                if base_type in dups:
+                    raise UntypyAttributeError(f"{checker.describe()} is in conflict with "
+                                               f"{dups[base_type].describe()} "
+                                               f"in {self.describe()}. "
+                                               f"Types must be distinguishable inside one Union.")
+                else:
+                    dups[base_type] = checker
 
-    def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
+    def check_and_wrap(self, arg: Any, upper: ExecutionContext) -> Any:
+        idx = 0
         for checker in self.inner:
+            ctx = UnionExecutionContext(upper, self.inner, idx)
+            idx += 1
             try:
                 return checker.check_and_wrap(arg, ctx)
             except UntypyTypeError as _e:
@@ -43,3 +58,14 @@ class UnionChecker(TypeChecker):
     def describe(self) -> str:
         desc = lambda s: s.describe()
         return f"Union[{', '.join(map(desc, self.inner))}]"
+
+    def base_type(self) -> list[Any]:
+        out = []
+        for checker in self.inner:
+            out.append(checker.base_type())
+        return out
+
+
+class UnionExecutionContext(CompoundTypeExecutionContext):
+    def name(self):
+        return "Union"

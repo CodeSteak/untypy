@@ -33,6 +33,9 @@ class ListChecker(TypeChecker):
 
         return TypedList(arg, self.inner, ctx)
 
+    def base_type(self) -> list[Any]:
+        return [list]
+
     def describe(self) -> str:
         return f"list[{self.inner.describe()}]"
 

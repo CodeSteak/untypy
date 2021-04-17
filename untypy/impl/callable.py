@@ -42,8 +42,11 @@ class CallableChecker(TypeChecker):
         self.return_checker = return_checker
         self.argument_checker = argument_checker
 
-    def may_change_identity(self) -> bool:
+    def may_be_wrapped(self) -> bool:
         return True
+
+    def base_type(self) -> list[Any]:
+        return [Callable]
 
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
         if callable(arg):
