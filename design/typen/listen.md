@@ -56,6 +56,7 @@ foo.bar()
 # => V1 'hello world' (aber kein Typechecking)
 # => V2 '' aber Typechecking
 # => V3 'hello world' ( + Typechecking)
+# => V4 'hello world'
 ```
 
 Problem: 
@@ -115,6 +116,169 @@ kommen, daher ungeeignet.
 Idee 3: `__call__` von A überschreiben.
 Idee 4: Dynamisch zur Laufzeit Subklasse von A erstellen, mit modifizietem `__call__`
 
-## Was nutzen andere Python Libs:
- - Bearlib: Scheint kein wrapping zu machen. Erreicht O(1) für listen, dadurch, dass nur stichprobenartig überprüft wird
- - 
+##  Umsetzung in anderen Python Libs:
+
+### BearType
+(python 3.9.2 / beartype 0.6.0)
+
+BearType úberprüft keine Callables als Argumente, daher werden diese auch nicht in Listen unterstützt:
+```python
+@beartype
+def do_something(x: Callable[[int], str]):
+    x(42)
+
+@beartype
+def wrong(x: int) -> int:
+    return x
+
+do_something(wrong) # Okay
+```
+Beim Typechecking von Listen wird jedem Funktionsaufruf zufällig ein Pfad verfolgt und überprüft:
+```python
+@beartype
+def do_something(x: list[int]):
+    pass
+
+ok = 0
+error = 0
+iterations = 100
+for i in range(0, iterations):
+    try:
+        do_something([1, 2, 3, 4, 5, 6, 7, 8, "nine", 10])
+        ok += 1
+    except:
+        error += 1
+
+print(f"Ok: {ok / iterations}") # Ok: 0.9
+print(f"Error: {error / iterations}") # Error: 0.1
+```
+
+### Enforce
+(python 3.6.0 / enforce 0.3.4)
+
+Callables werden anhand der Signatur überprüft:
+```python
+@enforce.runtime_validation
+def do_something(x: Callable[[int], str]):
+    pass
+
+@enforce.runtime_validation
+def wrong(x: int) -> int:
+    return x
+
+do_something(wrong) # TypeError
+```
+Bei Lambda-Expressions kann nur "Callable" ohne weiter Argument-Typen angegeben werden.
+
+Callables innerhalb von Listen führen immer zum Fehler:
+```python
+@enforce.runtime_validation
+def do_something(x: List[Callable[[int], str]]):
+    pass
+
+@enforce.runtime_validation
+def right(x: int) -> str:
+    return str(x)
+
+do_something([right]) # TypeError: sequence item 0: expected str instance, CallableMeta found
+```
+
+Listen werden scheinbar sequenziell überprüft:
+```python
+@enforce.runtime_validation
+def do_something(x: List[int]):
+    pass
+
+do_something([1, 2, 3, 4, 5, 6, 7, 8, "nine", 10])  # Argument 'x' was not of type typing.List[int]. Actual type was typing.List[int, str].
+```
+
+### pytypes
+(python 3.6.0 / pytypes 1.0b5)
+
+Pytypes vergleicht signaturen von Callables:
+```python
+from typing import *
+
+@typechecked
+def do_something(x: Callable[[int], str]):
+    pass
+
+@typechecked
+def actually_do_something(x: Callable[[int], str]):
+  x(42)
+
+@typechecked
+def wrong(x: int) -> int: 
+    return x
+
+do_something(wrong) # TypeError
+```
+Lambda Expression werden gewrapped:
+```python
+do_something(lambda x: x) # Kein Fehler, da kein Aufruf.
+actually_do_something(lambda x: x) # TypeError
+```
+
+Callables in Listen werden jedoch nicht auf dieselbe Art überprüft:
+```python
+@typechecked
+def do_something(x: List[Callable[[int], str]]):
+    pass
+
+@typechecked
+def right(x: int) -> str:
+    return str(x)
+
+do_something([right])
+```
+```
+pytypes.exceptions.InputTypeError: 
+  __main__.do_something
+  called with incompatible types:
+Expected: Tuple[List[Callable[[int], str]]]
+Received: Tuple[List[function]]
+```
+Ansonsten finden typechecking in Listen auf allen Elementen statt:
+```python
+@typechecked
+def do_something(x: List[int]):
+    pass
+
+do_something([1, 2, 3, 4, 5, 6, 7, 8, "nine", 10])
+```
+```
+  called with incompatible types:
+Expected: Tuple[List[int]]
+Received: Tuple[List[Union[int, str]]]
+```
+In der Fehlermeldung wird der übergebene Typ richtig angegeben.
+
+### Typeguard
+(python 3.9.4 / typeguard 2.12.0 )
+
+In Typeguard findet kein Wrapping statt:
+```python
+@typechecked
+def do_something(x: Callable[[int], str]):
+    x(42)
+    pass
+
+@typechecked
+def wrong(x: int) -> int:
+    return x
+
+do_something(wrong) # Ok
+```
+Ansonsten finden typechecking in Listen auf allen Elementen statt:
+```python
+@typechecked
+def do_something(x: List[int]):
+    pass
+
+do_something([1, 2, 3, 4, 5, 6, 7, 8, "nine", 10])
+```
+```
+TypeError: type of argument "x"[8] must be int; got str instead
+```
+
+
