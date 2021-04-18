@@ -11,18 +11,17 @@ Current Features:
 - Any
 - Literal
 - Tuple
+- Union
+- list
 
 Partially Implemented
 ---------------------
-- Union (Only Simple Cases)
-- list (No Callables etc. inside)
+currently none
+
 
 Dummy Implementation
 --------------------
-Just a Placeholder.
-
-- Tuple
-
+currently none
 
 
 Examples
