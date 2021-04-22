@@ -96,7 +96,7 @@ class TypedList(list):
         else:
             # returned structure is an list itself.
             # e.g. list[1:3, ...]
-            return list(map(lambda x: self.checker.check(x, self.ctx), self.inner.__getitem__(index)))
+            return list(map(lambda x: self.checker.check_and_wrap(x, self.ctx), self.inner.__getitem__(index)))
 
     def __iter__(self):
         return TypedListIterator(self)
@@ -226,6 +226,8 @@ class TypedList(list):
     def __str__(self):
         return self.inner.__str__()
 
+    def __copy__(self):
+        return self.inner.copy()
 
 class TypedListIterator:
     inner: TypedList
