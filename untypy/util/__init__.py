@@ -41,3 +41,8 @@ class CompoundTypeExecutionContext(ExecutionContext):
             None,
             None
         ))
+
+
+class DummyExecutionContext(ExecutionContext):
+    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        return err
