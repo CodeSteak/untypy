@@ -33,4 +33,5 @@ class LiteralChecker(TypeChecker):
         return self.inner[:]
 
     def describe(self) -> str:
-        return f"Literal[{str(self.inner)}]"
+        strings = map(lambda v: "%r" % v, self.inner)
+        return f"Literal[{', '.join(strings)}]"
