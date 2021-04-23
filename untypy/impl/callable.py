@@ -142,7 +142,7 @@ class TypedCallableArgumentExecutionContext(ExecutionContext):
         if len(front_types) > 0:
             l += len(', ')
 
-        return f"Callable[[{', '.join(front_types + [next_ty] + back_types)}, {self.fn.return_checker.describe()}]", \
+        return f"Callable[[{', '.join(front_types + [next_ty] + back_types)}], {self.fn.return_checker.describe()}]", \
                (" " * l) + indicator
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
