@@ -31,7 +31,7 @@ class ListChecker(TypeChecker):
         if not issubclass(type(arg), list):
             raise ctx.wrap(UntypyTypeError(arg, self.describe()))
 
-        return TypedList(arg, self.inner, ctx)
+        return TypedList(arg, self.inner, ListExecutionContext(ctx))
 
     def base_type(self) -> list[Any]:
         return [list]
