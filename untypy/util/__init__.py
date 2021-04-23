@@ -45,4 +45,12 @@ class CompoundTypeExecutionContext(ExecutionContext):
 
 class DummyExecutionContext(ExecutionContext):
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
-        return err
+        (t, i) = err.next_type_and_indicator()
+
+        return err.with_frame(Frame(
+            t,
+            i,
+            file="dummy",
+            line_no=0,
+            source_line="dummy"
+        ))
