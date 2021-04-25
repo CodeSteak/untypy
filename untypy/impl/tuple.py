@@ -5,12 +5,13 @@ from typing import Any, Optional, Tuple
 from untypy.util import CompoundTypeExecutionContext
 
 TupleType = type(Tuple[str, int])
+TupleTypeB = type(tuple[str, int])
 
 
 class TupleFactory(TypeCheckerFactory):
 
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
-        if type(annotation) is TupleType:
+        if type(annotation) is TupleType or type(annotation) is TupleTypeB:
             inner = []
             for arg in annotation.__args__:
                 checker = ctx.find_checker(arg)
@@ -50,9 +51,9 @@ class TupleChecker(TypeChecker):
 
     def describe(self) -> str:
         desc = lambda s: s.describe()
-        return f"Tuple[{', '.join(map(desc, self.inner))}]"
+        return f"tuple[{', '.join(map(desc, self.inner))}]"
 
 
 class TupleExecutionContext(CompoundTypeExecutionContext):
     def name(self):
-        return "Tuple"
+        return "tuple"
