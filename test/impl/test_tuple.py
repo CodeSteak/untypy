@@ -3,6 +3,7 @@ from typing import Tuple
 
 from untypy.error import UntypyTypeError
 from untypy.impl import DefaultCreationContext
+from untypy.impl.dummy_delayed import DummyDelayedType
 from untypy.impl.tuple import TupleFactory
 from untypy.util import DummyExecutionContext
 
@@ -45,6 +46,22 @@ class TestTuple(unittest.TestCase):
 
         self.assertEqual(t, "tuple[int, str]")
         self.assertEqual(i, "           ^^^")
+
+        # This DummyExecutionContext is responsable
+        self.assertEqual(cm.exception.frames[-1].file, "dummy")
+
+    def test_negative_delayed(self):
+        checker = TupleFactory().create_from(tuple[int, DummyDelayedType], DefaultCreationContext())
+
+        res = checker.check_and_wrap((1, 2), DummyExecutionContext())
+        with self.assertRaises(UntypyTypeError) as cm:
+            res[1].use()
+
+        (t, i) = cm.exception.next_type_and_indicator()
+        i = i.rstrip()
+
+        self.assertEqual(t, "tuple[int, DummyDelayedType]")
+        self.assertEqual(i, "           ^^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
         self.assertEqual(cm.exception.frames[-1].file, "dummy")

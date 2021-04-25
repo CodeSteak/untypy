@@ -3,6 +3,7 @@ from typing import Callable
 
 from untypy.error import UntypyTypeError
 from untypy.impl.callable import CallableChecker, CallableFactory
+from untypy.impl.dummy_delayed import DummyDelayedType
 from untypy.util import DummyExecutionContext
 from untypy.impl import DefaultCreationContext
 
@@ -57,5 +58,21 @@ class TestCallable(unittest.TestCase):
 
         self.assertEqual(t, "Callable[[int, int], str]")
         self.assertEqual(i, "^^^^^^^^^^^^^^^^^^^^^^^^^")
+
+        self.assertEqual(cm.exception.frames[-1].file, "dummy")
+
+    def test_error_delayed(self):
+        self.checker = CallableFactory().create_from(Callable[[int, int], DummyDelayedType], DefaultCreationContext())
+        fn = self.checker.check_and_wrap(lambda x, y: x // y, DummyExecutionContext())
+        res = fn(1, 2)
+
+        with self.assertRaises(UntypyTypeError) as cm:
+            res.use()
+
+        (t, i) = cm.exception.next_type_and_indicator()
+        i = i.rstrip()
+
+        self.assertEqual(t, "Callable[[int, int], DummyDelayedType]")
+        self.assertEqual(i, "                     ^^^^^^^^^^^^^^^^")
 
         self.assertEqual(cm.exception.frames[-1].file, "dummy")

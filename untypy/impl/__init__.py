@@ -11,6 +11,8 @@ from .none import NoneFactory
 from .simple import SimpleFactory
 from .tuple import TupleFactory
 from .union import UnionFactory
+from .dummy_delayed import DummyDelayedFactory
+
 
 # More Specific Ones First
 _FactoryList = [
@@ -21,6 +23,7 @@ _FactoryList = [
     LiteralFactory(),
     UnionFactory(),
     TupleFactory(),
+    DummyDelayedFactory(),
     #
     SimpleFactory()
 ]
