@@ -44,4 +44,4 @@ run tests with:
 
 .. code:: bash
 
-    python -m unittest discover # currently fails
+    python -m unittest discover
