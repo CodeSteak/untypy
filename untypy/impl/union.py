@@ -50,10 +50,10 @@ class UnionChecker(TypeChecker):
             except UntypyTypeError as _e:
                 pass
 
-        raise UntypyTypeError(
+        raise upper.wrap(UntypyTypeError(
             arg,
             self.describe()
-        )
+        ))
 
     def describe(self) -> str:
         desc = lambda s: s.describe()
