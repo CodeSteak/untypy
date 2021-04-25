@@ -13,6 +13,7 @@ Current Features:
 - Tuple
 - Union
 - list
+- Optional
 
 Partially Implemented
 ---------------------

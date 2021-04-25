@@ -40,3 +40,21 @@ class TestPatching(unittest.TestCase):
 
         # test other modules
         test.patching_dummy.unpatched.fn_one("wrong_arg")
+
+    @unittest.skip("not correctly implemented yet")
+    def test_patching_classes(self):
+        import test.patching_dummy.patching_classes as c
+
+        untypy.enable(recursive=True, root=c)
+
+        # ok
+        self.assertEqual(c.A(10).add(5), 15)
+
+        with self.assertRaises(UntypyTypeError):
+            c.A("not an int")
+
+        i = c.A(10)
+        with self.assertRaises(UntypyTypeError):
+            c.add("45")
+
+
