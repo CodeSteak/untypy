@@ -34,13 +34,15 @@ class CompoundTypeExecutionContext(ExecutionContext):
 
         type_declared += "]"
 
-        return err.with_frame(Frame(
+        err = err.with_frame(Frame(
             type_declared,
             indicator,
             None,
             None,
             None
         ))
+
+        return self.upper.wrap(err)
 
 
 class DummyExecutionContext(ExecutionContext):
