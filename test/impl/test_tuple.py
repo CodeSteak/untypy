@@ -7,7 +7,7 @@ from untypy.impl.tuple import TupleFactory
 from untypy.util import DummyExecutionContext
 
 
-class TestNone(unittest.TestCase):
+class TestTuple(unittest.TestCase):
 
     def test_wrap_lower_case(self):
         checker = TupleFactory().create_from(tuple[int, str], DefaultCreationContext())
