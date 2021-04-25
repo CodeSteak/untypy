@@ -6,7 +6,7 @@ from typing import Any, Optional
 class NoneFactory(TypeCheckerFactory):
 
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
-        if annotation is None:
+        if annotation is None or annotation is type(None):
             return NoneChecker()
         else:
             return None

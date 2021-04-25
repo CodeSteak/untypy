@@ -12,7 +12,7 @@ from .simple import SimpleFactory
 from .tuple import TupleFactory
 from .union import UnionFactory
 from .dummy_delayed import DummyDelayedFactory
-
+from .optional import OptionalFactory
 
 # More Specific Ones First
 _FactoryList = [
@@ -21,6 +21,7 @@ _FactoryList = [
     CallableFactory(),
     ListFactory(),
     LiteralFactory(),
+    OptionalFactory(),  # must be higher then Union
     UnionFactory(),
     TupleFactory(),
     DummyDelayedFactory(),

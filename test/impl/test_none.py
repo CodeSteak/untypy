@@ -14,6 +14,12 @@ class TestNone(unittest.TestCase):
         res = checker.check_and_wrap(None, DummyExecutionContext())
         self.assertEqual(None, res)
 
+    def test_wrap_of_none_type(self):
+        checker = NoneFactory().create_from(type(None), DefaultCreationContext())
+
+        res = checker.check_and_wrap(None, DummyExecutionContext())
+        self.assertEqual(None, res)
+
     def test_wrap_negative(self):
         checker = NoneFactory().create_from(None, DefaultCreationContext())
 

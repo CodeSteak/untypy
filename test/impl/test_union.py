@@ -1,7 +1,7 @@
 import unittest
-from typing import Tuple, Union
+from typing import Tuple, Union, Callable, Optional
 
-from untypy.error import UntypyTypeError
+from untypy.error import UntypyTypeError, UntypyAttributeError
 from untypy.impl import DefaultCreationContext
 from untypy.impl.dummy_delayed import DummyDelayedType
 from untypy.impl.union import UnionFactory
@@ -22,7 +22,6 @@ class TestUnion(unittest.TestCase):
         checker = UnionFactory().create_from(Union[int, str], DefaultCreationContext())
         with self.assertRaises(UntypyTypeError) as cm:
             res = checker.check_and_wrap(23.5, DummyExecutionContext())
-            self.assertEqual((1, "2"), res)
 
         (t, i) = cm.exception.next_type_and_indicator()
         i = i.rstrip()
@@ -49,3 +48,13 @@ class TestUnion(unittest.TestCase):
 
         # This DummyExecutionContext is responsable
         self.assertEqual(cm.exception.frames[-1].file, "dummy")
+
+    def test_not_allowing_multiple_callables(self):
+        with self.assertRaises(UntypyAttributeError):
+            checker = UnionFactory().create_from(Union[int, str, Callable[[int], str], Callable[[str], str]],
+                                                 DefaultCreationContext())
+
+        with self.assertRaises(UntypyAttributeError):
+            checker = UnionFactory().create_from(Union[int, Callable[[int], str],
+                                                 Union[Callable[[str], str], list[int]]],
+                                                 DefaultCreationContext())
