@@ -1,4 +1,4 @@
-from untypy.error import UntypyTypeError, Frame
+from untypy.error import UntypyTypeError, Frame, Location
 from untypy.interfaces import ExecutionContext, TypeChecker
 
 
@@ -38,21 +38,7 @@ class CompoundTypeExecutionContext(ExecutionContext):
             type_declared,
             indicator,
             None,
-            None,
             None
         ))
 
         return self.upper.wrap(err)
-
-
-class DummyExecutionContext(ExecutionContext):
-    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
-        (t, i) = err.next_type_and_indicator()
-
-        return err.with_frame(Frame(
-            t,
-            i,
-            file="dummy",
-            line_no=0,
-            source_line="dummy"
-        ))

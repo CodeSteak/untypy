@@ -15,6 +15,8 @@ from .dummy_delayed import DummyDelayedFactory
 from .optional import OptionalFactory
 
 # More Specific Ones First
+from ..error import Location
+
 _FactoryList = [
     AnyFactory(),
     NoneFactory(),
@@ -31,6 +33,12 @@ _FactoryList = [
 
 
 class DefaultCreationContext(CreationContext):
+
+    def __init__(self, declared_location : Location):
+        self.declared = declared_location
+
+    def declared_location(self) -> Location:
+        return self.declared
 
     def find_checker(self, annotation: Any) -> Optional[TypeChecker]:
         for fac in _FactoryList:

@@ -5,13 +5,13 @@ from untypy.error import UntypyTypeError
 from untypy.impl import DefaultCreationContext
 from untypy.impl.dummy_delayed import DummyDelayedType
 from untypy.impl.optional import OptionalFactory
-from untypy.util import DummyExecutionContext
+from test.util import DummyExecutionContext, DummyDefaultCreationContext
 
 
 class TestOptional(unittest.TestCase):
 
     def test_wrap(self):
-        checker = OptionalFactory().create_from(Optional[int], DefaultCreationContext())
+        checker = OptionalFactory().create_from(Optional[int], DummyDefaultCreationContext())
         res = checker.check_and_wrap(1, DummyExecutionContext())
         self.assertEqual(1, res)
 
@@ -19,7 +19,7 @@ class TestOptional(unittest.TestCase):
         self.assertEqual(None, res)
 
     def test_wrap_negative(self):
-        checker = OptionalFactory().create_from(Optional[int], DefaultCreationContext())
+        checker = OptionalFactory().create_from(Optional[int], DummyDefaultCreationContext())
         with self.assertRaises(UntypyTypeError) as cm:
             res = checker.check_and_wrap(23.5, DummyExecutionContext())
 
@@ -30,10 +30,10 @@ class TestOptional(unittest.TestCase):
         self.assertEqual(i, "         ^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].file, "dummy")
+        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
 
     def test_wrap_negative_delayed(self):
-        checker = OptionalFactory().create_from(Optional[DummyDelayedType], DefaultCreationContext())
+        checker = OptionalFactory().create_from(Optional[DummyDelayedType], DummyDefaultCreationContext())
 
         res = checker.check_and_wrap(1, DummyExecutionContext())
 
@@ -47,4 +47,4 @@ class TestOptional(unittest.TestCase):
         self.assertEqual(i, "         ^^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].file, "dummy")
+        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")

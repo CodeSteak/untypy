@@ -5,23 +5,23 @@ from untypy.error import UntypyTypeError
 from untypy.impl import DefaultCreationContext
 from untypy.impl.dummy_delayed import DummyDelayedType
 from untypy.impl.tuple import TupleFactory
-from untypy.util import DummyExecutionContext
+from test.util import DummyExecutionContext, DummyDefaultCreationContext
 
 
 class TestTuple(unittest.TestCase):
 
     def test_wrap_lower_case(self):
-        checker = TupleFactory().create_from(tuple[int, str], DefaultCreationContext())
+        checker = TupleFactory().create_from(tuple[int, str], DummyDefaultCreationContext())
         res = checker.check_and_wrap((1, "2"), DummyExecutionContext())
         self.assertEqual((1, "2"), res)
 
     def test_wrap_upper_case(self):
-        checker = TupleFactory().create_from(Tuple[int, str], DefaultCreationContext())
+        checker = TupleFactory().create_from(Tuple[int, str], DummyDefaultCreationContext())
         res = checker.check_and_wrap((1, "2"), DummyExecutionContext())
         self.assertEqual((1, "2"), res)
 
     def test_not_a_tuple(self):
-        checker = TupleFactory().create_from(tuple[int, str], DefaultCreationContext())
+        checker = TupleFactory().create_from(tuple[int, str], DummyDefaultCreationContext())
 
         with self.assertRaises(UntypyTypeError) as cm:
             res = checker.check_and_wrap(1, DummyExecutionContext())
@@ -33,10 +33,10 @@ class TestTuple(unittest.TestCase):
         self.assertEqual(i, "^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].file, "dummy")
+        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
 
     def test_negative(self):
-        checker = TupleFactory().create_from(tuple[int, str], DefaultCreationContext())
+        checker = TupleFactory().create_from(tuple[int, str], DummyDefaultCreationContext())
 
         with self.assertRaises(UntypyTypeError) as cm:
             res = checker.check_and_wrap((1, 2), DummyExecutionContext())
@@ -48,10 +48,10 @@ class TestTuple(unittest.TestCase):
         self.assertEqual(i, "           ^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].file, "dummy")
+        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
 
     def test_negative_delayed(self):
-        checker = TupleFactory().create_from(tuple[int, DummyDelayedType], DefaultCreationContext())
+        checker = TupleFactory().create_from(tuple[int, DummyDelayedType], DummyDefaultCreationContext())
 
         res = checker.check_and_wrap((1, 2), DummyExecutionContext())
         with self.assertRaises(UntypyTypeError) as cm:
@@ -64,4 +64,4 @@ class TestTuple(unittest.TestCase):
         self.assertEqual(i, "           ^^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].file, "dummy")
+        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")

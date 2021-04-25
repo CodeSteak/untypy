@@ -1,4 +1,4 @@
-from untypy.error import UntypyTypeError, Frame
+from untypy.error import UntypyTypeError
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from typing import Any, Optional, Tuple
 

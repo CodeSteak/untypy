@@ -3,7 +3,7 @@ import unittest
 from untypy.error import UntypyTypeError
 from untypy.impl import DefaultCreationContext
 from untypy.impl.simple import SimpleFactory
-from untypy.util import DummyExecutionContext
+from test.util import DummyExecutionContext, DummyDefaultCreationContext
 
 
 class A:
@@ -18,7 +18,7 @@ class B:
 class TestSimple(unittest.TestCase):
 
     def test_wrap(self):
-        checker = SimpleFactory().create_from(A, DefaultCreationContext())
+        checker = SimpleFactory().create_from(A, DummyDefaultCreationContext())
 
         a = A()
         child_a = ChildOfA()
@@ -29,7 +29,7 @@ class TestSimple(unittest.TestCase):
         self.assertIs(child_a, res)
 
     def test_wrap_negative(self):
-        checker = SimpleFactory().create_from(A, DefaultCreationContext())
+        checker = SimpleFactory().create_from(A, DummyDefaultCreationContext())
 
         with self.assertRaises(UntypyTypeError) as cm:
             res = checker.check_and_wrap(B(), DummyExecutionContext())
@@ -41,4 +41,4 @@ class TestSimple(unittest.TestCase):
         self.assertEqual(i, "^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].file, "dummy")
+        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")

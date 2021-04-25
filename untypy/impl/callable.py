@@ -1,6 +1,6 @@
 import inspect
 
-from untypy.error import UntypyTypeError, UntypyAttributeError, Frame
+from untypy.error import UntypyTypeError, UntypyAttributeError, Frame, Location
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from typing import Any, Optional, Callable, Union, Tuple
 from collections.abc import Callable as AbcCallable
@@ -105,14 +105,17 @@ class TypedCallableReturnExecutionContext(ExecutionContext):
         desc = lambda s: s.describe()
         front_str = f"Callable[[{', '.join(map(desc, self.fn.argument_checker))}], "
 
-        # TODO: what if inside is TypedFunction?
-        err = err.with_frame(Frame(
-            f"{front_str}{next_ty}]",
-            (" " * len(front_str)) + indicator,
-
+        responsable = Location(
             file=inspect.getfile(self.fn.inner),
             line_no=inspect.getsourcelines(self.fn.inner)[1],
             source_line="\n".join(inspect.getsourcelines(self.fn.inner)[0]),
+        )
+
+        err = err.with_frame(Frame(
+            f"{front_str}{next_ty}]",
+            (" " * len(front_str)) + indicator,
+            declared=None,
+            responsable=responsable
         ))
 
         return self.upper.wrap(err)
@@ -147,12 +150,23 @@ class TypedCallableArgumentExecutionContext(ExecutionContext):
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
         (type_declared, indicator_line) = self.declared_and_indicator(err)
-        frame = Frame(
-            type_declared,
-            indicator_line,
 
+        declared = Location(
+            file=inspect.getfile(self.fn.inner),
+            line_no=inspect.getsourcelines(self.fn.inner)[1],
+            source_line="\n".join(inspect.getsourcelines(self.fn.inner)[0]),
+        )
+
+        responsable = Location(
             file=self.stack.filename,
             line_no=self.stack.lineno,
             source_line=self.stack.code_context[0]
+        )
+
+        frame = Frame(
+            type_declared,
+            indicator_line,
+            declared=declared,
+            responsable=responsable,
         )
         return err.with_frame(frame)

@@ -1,6 +1,6 @@
 import inspect
 from types import GenericAlias
-from untypy.error import UntypyTypeError, Frame
+from untypy.error import UntypyTypeError, Frame, Location
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from typing import Any, Optional, Union
 
@@ -13,16 +13,18 @@ class ListFactory(TypeCheckerFactory):
             inner = ctx.find_checker(annotation.__args__[0])
             if inner is None:
                 return None
-            return ListChecker(inner)
+            return ListChecker(inner, ctx.declared_location())
         else:
             return None
 
 
 class ListChecker(TypeChecker):
     inner: TypeChecker
+    declared: Location
 
-    def __init__(self, inner: TypeChecker):
+    def __init__(self, inner: TypeChecker, declared: Location):
         self.inner = inner
+        self.declared = declared
 
     def may_change_identity(self) -> bool:
         return True
@@ -31,7 +33,7 @@ class ListChecker(TypeChecker):
         if not issubclass(type(arg), list):
             raise ctx.wrap(UntypyTypeError(arg, self.describe()))
 
-        return TypedList(arg, self.inner, ListExecutionContext(ctx))
+        return TypedList(arg, self.inner, ListExecutionContext(ctx), self.declared)
 
     def base_type(self) -> list[Any]:
         return [list]
@@ -53,7 +55,6 @@ class ListExecutionContext(ExecutionContext):
                 f"list[{next_type}]",
                 (" " * len("list[") + indicator),
                 None,
-                None,
                 None
             ))
         return self.upper.wrap(err)
@@ -61,18 +62,23 @@ class ListExecutionContext(ExecutionContext):
 
 class ListCallerExecutionContext(ExecutionContext):
     stack: inspect.FrameInfo
+    declared: Location
 
-    def __init__(self, stack: inspect.FrameInfo):
+    def __init__(self, stack: inspect.FrameInfo, declared : Location):
         self.stack = stack
+        self.declared = declared
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
         next_type, indicator = err.next_type_and_indicator()
         return err.with_frame(Frame(
             f"list[{next_type}]",
             (" " * len("list[") + indicator),
-            file=self.stack.filename,
-            line_no=self.stack.lineno,
-            source_line=self.stack.code_context[0]
+            declared=self.declared,
+            responsable=Location(
+                file=self.stack.filename,
+                line_no=self.stack.lineno,
+                source_line=self.stack.code_context[0]
+            )
         ))
 
 
@@ -80,12 +86,14 @@ class TypedList(list):
     inner: list
     checker: TypeChecker
     ctx: ExecutionContext
+    declared: Location
 
-    def __init__(self, lst, checker, ctx):
+    def __init__(self, lst, checker, ctx, declared):
         super().__init__()
         self.checker = checker
         self.inner = lst
         self.ctx = ctx
+        self.declared = declared
 
     # Perform type check
     def __getitem__(self, index):
@@ -106,7 +114,7 @@ class TypedList(list):
         stack = inspect.stack()[1:]
         # Use Callers of Callables
         caller = next((e for e in stack if not e.function == '__call__'), None)
-        ctx = ListCallerExecutionContext(caller)
+        ctx = ListCallerExecutionContext(caller, self.declared)
         self.inner.append(self.checker.check_and_wrap(x, ctx))
 
     def extend(self, iterable) -> None:
@@ -114,7 +122,7 @@ class TypedList(list):
         stack = inspect.stack()[1:]
         # Use Callers of Callables
         caller = next((e for e in stack if not e.function == '__call__'), None)
-        ctx = ListCallerExecutionContext(caller)
+        ctx = ListCallerExecutionContext(caller, self.declared)
         return self.inner.extend(list(map(lambda x: self.checker.check_and_wrap(x, ctx), iterable)))
 
     def insert(self, index, obj) -> None:
@@ -122,7 +130,7 @@ class TypedList(list):
         stack = inspect.stack()[1:]
         # Use Callers of Callables
         caller = next((e for e in stack if not e.function == '__call__'), None)
-        ctx = ListCallerExecutionContext(caller)
+        ctx = ListCallerExecutionContext(caller, self.declared)
 
         return self.inner.insert(index, self.checker.check_and_wrap(obj, ctx))
 
@@ -131,7 +139,7 @@ class TypedList(list):
         stack = inspect.stack()[1:]
         # Use Callers of Callables
         caller = next((e for e in stack if not e.function == '__call__'), None)
-        ctx = ListCallerExecutionContext(caller)
+        ctx = ListCallerExecutionContext(caller, self.declared)
 
         self.inner.extend(list(map(lambda x: self.checker.check_and_wrap(x, ctx), other)))
         return self
@@ -141,7 +149,7 @@ class TypedList(list):
         stack = inspect.stack()[1:]
         # Use Callers of Callables
         caller = next((e for e in stack if not e.function == '__call__'), None)
-        ctx = ListCallerExecutionContext(caller)
+        ctx = ListCallerExecutionContext(caller, self.declared)
 
         return self.inner.__setitem__(idx, self.checker.check_and_wrap(value, ctx))
 

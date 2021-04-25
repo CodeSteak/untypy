@@ -3,25 +3,25 @@ import unittest
 from untypy.error import UntypyTypeError
 from untypy.impl import DefaultCreationContext
 from untypy.impl.none import NoneFactory
-from untypy.util import DummyExecutionContext
+from test.util import DummyExecutionContext, DummyDefaultCreationContext
 
 
 class TestNone(unittest.TestCase):
 
     def test_wrap(self):
-        checker = NoneFactory().create_from(None, DefaultCreationContext())
+        checker = NoneFactory().create_from(None, DummyDefaultCreationContext())
 
         res = checker.check_and_wrap(None, DummyExecutionContext())
         self.assertEqual(None, res)
 
     def test_wrap_of_none_type(self):
-        checker = NoneFactory().create_from(type(None), DefaultCreationContext())
+        checker = NoneFactory().create_from(type(None), DummyDefaultCreationContext())
 
         res = checker.check_and_wrap(None, DummyExecutionContext())
         self.assertEqual(None, res)
 
     def test_wrap_negative(self):
-        checker = NoneFactory().create_from(None, DefaultCreationContext())
+        checker = NoneFactory().create_from(None, DummyDefaultCreationContext())
 
         with self.assertRaises(UntypyTypeError) as cm:
             res = checker.check_and_wrap(12, DummyExecutionContext())
@@ -33,4 +33,4 @@ class TestNone(unittest.TestCase):
         self.assertEqual(i, "^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].file, "dummy")
+        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")

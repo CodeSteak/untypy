@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from typing import Optional, Any, Union
 
-from untypy.error import Frame, UntypyTypeError
+from untypy.error import  UntypyTypeError, Location
 
 
 class CreationContext:
     def find_checker(self, annotation: Any) -> Optional[TypeChecker]:
+        raise NotImplementedError
+
+    def declared_location(self) -> Location:
         raise NotImplementedError
 
 

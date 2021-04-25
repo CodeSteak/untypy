@@ -4,13 +4,13 @@ from typing import Literal
 from untypy.error import UntypyTypeError
 from untypy.impl import DefaultCreationContext
 from untypy.impl.literal import LiteralChecker, LiteralFactory
-from untypy.util import DummyExecutionContext
+from test.util import DummyExecutionContext, DummyDefaultCreationContext
 
 
 class TestLiteral(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.checker = LiteralFactory().create_from(Literal[1, 2, "3"], DefaultCreationContext())
+        self.checker = LiteralFactory().create_from(Literal[1, 2, "3"], DummyDefaultCreationContext())
 
     def test_positive_checking(self):
         self.assertEqual(self.checker.check_and_wrap(1, DummyExecutionContext()), 1)
@@ -27,4 +27,4 @@ class TestLiteral(unittest.TestCase):
         self.assertEqual(i, "^^^^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].file, "dummy")
+        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")

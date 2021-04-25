@@ -4,29 +4,50 @@ import inspect
 from typing import Any, Optional, Tuple
 
 
-class Frame:
-    type_declared: str
-    indicator_line: str
+class Location:
+    file: str
+    line_no: int
+    source_line: str
 
-    file: Optional[str]
-    line_no: Optional[int]
-    source_line: Optional[str]
-
-    def __init__(self, type_declared: str, indicator_line: str, file: Optional[str], line_no: Optional[int],
-                 source_line: Optional[str]):
-        self.type_declared = type_declared
-        self.indicator_line = indicator_line
+    def __init__(self, file: str, line_no: int, source_line: str):
         self.file = file
         self.line_no = line_no
         self.source_line = source_line
 
     def __str__(self):
+        buf = f"{self.file}:\n"
+        for i, line in enumerate(self.source_line.splitlines()):
+            if i < 5:
+                buf += f"{'{:3}'.format(self.line_no + i)} | {line}\n"
+        if i >= 5:
+            buf += "    | ..."
+        return buf
+
+
+class Frame:
+    type_declared: str
+    indicator_line: str
+
+    declared: Optional[Location]
+    responsable: Optional[Location]
+
+    def __init__(self, type_declared: str, indicator_line: Optional[str],
+                 declared: Optional[Location], responsable: Optional[Location]):
+
+        self.type_declared = type_declared
+        if indicator_line is None:
+            indicator_line = '^' * len(type_declared)
+        self.indicator_line = indicator_line
+        self.declared = declared
+        self.responsable = responsable
+
+    def __str__(self):
         buf = f"in: {self.type_declared}\n" \
               f"    {self.indicator_line}\n"
 
-        if self.file is not None and self.line_no is not None and self.source_line is not None:
-            buf += f"{self.file}:{self.line_no}:\n" \
-                   f"{self.source_line}\n" \
+        if self.responsable is not None:
+            buf += f"{self.responsable.file}:{self.responsable.line_no}:\n" \
+                   f"{self.responsable.source_line}\n" \
                    f"\n"
         return buf
 
@@ -38,9 +59,6 @@ class UntypyTypeError(TypeError):
     frames: list[Frame]
 
     def __init__(self, given: Any, expected: str, expected_indicator: Optional[str] = None, frames: list[Frame] = []):
-        super().__init__(f"given: {given}\n"
-                         f"expected: {expected}\n\n" +
-                         ('\n'.join(map(str, frames))))
         self.given = given
         self.expected = expected
         if expected_indicator is None:
@@ -48,6 +66,8 @@ class UntypyTypeError(TypeError):
 
         self.expected_indicator = expected_indicator
         self.frames = frames.copy()
+
+        super().__init__(self.__str__())
 
     def next_type_and_indicator(self) -> Tuple[str, str]:
         if len(self.frames) >= 1:
@@ -60,9 +80,32 @@ class UntypyTypeError(TypeError):
         return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame])
 
     def __str__(self):
-        return f"\ngiven: {self.given}\n" \
-               f"expected: {self.expected}\n\n" + \
-               ('\n'.join(map(str, self.frames)))
+        declared_locs = []
+        responsable_locs = []
+
+        for f in self.frames:
+            if f.responsable is not None and str(f.responsable) not in responsable_locs:
+                responsable_locs.append(str(f.responsable))
+            if f.declared is not None and str(f.declared) not in declared_locs:
+                declared_locs.append(str(f.declared))
+
+        cause = '\n'.join(responsable_locs)
+        declared = '\n'.join(declared_locs)
+
+        (ty, ind) = self.next_type_and_indicator()
+
+        inside = ""
+        if self.expected != ty:
+            inside = f"inside of {ty}\n" \
+                     f"          {ind}\n"
+
+        given = "%r" % self.given
+        return (f"\ngiven: {given}\n"
+            f"expected: {self.expected}\n"
+            f"          {self.expected_indicator}\n\n"
+            f"{inside}"
+            f"declared at: \n{declared}\n\n"
+            f"caused by: \n{cause}")
 
 
 class UntypyAttributeError(AttributeError):
