@@ -246,6 +246,9 @@ class TypedListIterator:
         self.inner = inner
         self.index = 0
 
+    def __iter__(self):
+        return self
+
     def __next__(self):
         if self.index >= len(self.inner):
             raise StopIteration
