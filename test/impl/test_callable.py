@@ -34,7 +34,7 @@ class TestCallable(unittest.TestCase):
         self.assertEqual(i, "               ^^^")
 
         # This file is responsable
-        self.assertEqual(cm.exception.frames[-1].responsable.file, __file__)
+        self.assertEqual(cm.exception.last_responsable().file, __file__)
 
     def test_ret_error(self):
         with self.assertRaises(UntypyTypeError) as cm:
@@ -47,7 +47,7 @@ class TestCallable(unittest.TestCase):
         self.assertEqual(i, "                     ^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_not_a_callable(self):
         with self.assertRaises(UntypyTypeError) as cm:
@@ -59,7 +59,7 @@ class TestCallable(unittest.TestCase):
         self.assertEqual(t, "Callable[[int, int], str]")
         self.assertEqual(i, "^^^^^^^^^^^^^^^^^^^^^^^^^")
 
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_error_delayed(self):
         self.checker = CallableFactory().create_from(Callable[[int, int], DummyDelayedType], DummyDefaultCreationContext())
@@ -75,4 +75,4 @@ class TestCallable(unittest.TestCase):
         self.assertEqual(t, "Callable[[int, int], DummyDelayedType]")
         self.assertEqual(i, "                     ^^^^^^^^^^^^^^^^")
 
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")

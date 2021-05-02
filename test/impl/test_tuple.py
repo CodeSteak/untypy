@@ -33,7 +33,7 @@ class TestTuple(unittest.TestCase):
         self.assertEqual(i, "^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_negative(self):
         checker = TupleFactory().create_from(tuple[int, str], DummyDefaultCreationContext())
@@ -48,7 +48,7 @@ class TestTuple(unittest.TestCase):
         self.assertEqual(i, "           ^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_negative_delayed(self):
         checker = TupleFactory().create_from(tuple[int, DummyDelayedType], DummyDefaultCreationContext())
@@ -64,4 +64,4 @@ class TestTuple(unittest.TestCase):
         self.assertEqual(i, "           ^^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")

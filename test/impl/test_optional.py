@@ -30,7 +30,7 @@ class TestOptional(unittest.TestCase):
         self.assertEqual(i, "         ^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_wrap_negative_delayed(self):
         checker = OptionalFactory().create_from(Optional[DummyDelayedType], DummyDefaultCreationContext())
@@ -47,4 +47,4 @@ class TestOptional(unittest.TestCase):
         self.assertEqual(i, "         ^^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")

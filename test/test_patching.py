@@ -54,5 +54,3 @@ class TestPatching(unittest.TestCase):
         i = c.A(10)
         with self.assertRaises(UntypyTypeError):
             i.add("45")
-
-

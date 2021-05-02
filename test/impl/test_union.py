@@ -30,7 +30,7 @@ class TestUnion(unittest.TestCase):
         self.assertEqual(i, "^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_wrap_negative_delayed(self):
         checker = UnionFactory().create_from(Union[DummyDelayedType, str], DummyDefaultCreationContext())
@@ -47,7 +47,7 @@ class TestUnion(unittest.TestCase):
         self.assertEqual(i, "      ^^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_not_allowing_multiple_callables(self):
         with self.assertRaises(UntypyAttributeError):

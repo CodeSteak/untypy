@@ -33,4 +33,4 @@ class TestNone(unittest.TestCase):
         self.assertEqual(i, "^^^^")
 
         # This DummyExecutionContext is responsable
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")

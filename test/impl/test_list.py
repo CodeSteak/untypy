@@ -46,7 +46,7 @@ class TestList(unittest.TestCase):
         self.assertEqual(t, "list[DummyDelayedType]")
         self.assertEqual(i, "     ^^^^^^^^^^^^^^^^")
 
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
 
     def test_wrapping_resp(self):
@@ -63,7 +63,7 @@ class TestList(unittest.TestCase):
         self.assertEqual(t, "list[int]")
         self.assertEqual(i, "     ^^^")
 
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_wrapping_resp_by_side_effects(self):
         """
@@ -80,7 +80,7 @@ class TestList(unittest.TestCase):
         self.assertEqual(t, "list[int]")
         self.assertEqual(i, "     ^^^")
 
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_self_resp(self):
         """
@@ -95,7 +95,7 @@ class TestList(unittest.TestCase):
         self.assertEqual(t, "list[int]")
         self.assertEqual(i, "     ^^^")
 
-        self.assertEqual(cm.exception.frames[-1].responsable.file, __file__)
+        self.assertEqual(cm.exception.last_responsable().file, __file__)
 
     def test_not_a_list(self):
         with self.assertRaises(UntypyTypeError) as cm:
@@ -107,7 +107,7 @@ class TestList(unittest.TestCase):
         self.assertEqual(t, "list[int]")
         self.assertEqual(i, "^^^^^^^^^")
 
-        self.assertEqual(cm.exception.frames[-1].responsable.file, "dummy")
+        self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_iterator(self):
         out = []
