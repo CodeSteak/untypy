@@ -3,7 +3,7 @@ import inspect
 from untypy.error import UntypyTypeError, UntypyAttributeError, Location, Frame
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from typing import Any, Optional, Union, Generator
-
+import collections.abc
 from untypy.util import CompoundTypeExecutionContext, NoResponsabilityWrapper
 
 GeneratorType = type(Generator[None, None, None])
@@ -11,8 +11,20 @@ GeneratorType = type(Generator[None, None, None])
 
 class GeneratorFactory(TypeCheckerFactory):
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
-        if type(annotation) == GeneratorType:
-            return GeneratorChecker(annotation, ctx)
+        if type(annotation) == GeneratorType and annotation.__origin__ == collections.abc.Generator:
+            if len(annotation.__args__) != 3:
+                raise UntypyAttributeError(f"Expected 3 type arguments for Generator.")
+
+            (yield_checker, send_checker, return_checker) = list(map(lambda a: ctx.find_checker(a), annotation.__args__))
+
+            if yield_checker is None:
+                raise UntypyAttributeError(f"The Yield Annotation of the Generator could not be resolved.")
+            if send_checker is None:
+                raise UntypyAttributeError(f"The Send Annotation of the Generator could not be resolved.")
+            if return_checker is None:
+                raise UntypyAttributeError(f"The Return Annotation of the Generator could not be resolved.")
+
+            return GeneratorChecker(yield_checker, send_checker, return_checker)
         else:
             return None
 
@@ -22,19 +34,7 @@ class GeneratorChecker(TypeChecker):
     send_checker: TypeChecker
     return_checker: TypeChecker
 
-    def __init__(self, annotation: GeneratorType, ctx: CreationContext):
-        if len(annotation.__args__) != 3:
-            raise UntypyAttributeError(f"Expected 3 type arguments for Generator.")
-
-        (yield_checker, send_checker, return_checker) = list(map(lambda a: ctx.find_checker(a), annotation.__args__))
-
-        if yield_checker is None:
-            raise UntypyAttributeError(f"The Yield Annotation of the Generator could not be resolved.")
-        if send_checker is None:
-            raise UntypyAttributeError(f"The Send Annotation of the Generator could not be resolved.")
-        if return_checker is None:
-            raise UntypyAttributeError(f"The Return Annotation of the Generator could not be resolved.")
-
+    def __init__(self, yield_checker: TypeChecker, send_checker: TypeChecker, return_checker : TypeChecker):
         self.yield_checker = yield_checker
         self.send_checker = send_checker
         self.return_checker = return_checker

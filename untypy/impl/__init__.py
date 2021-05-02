@@ -14,6 +14,7 @@ from .union import UnionFactory
 from .dummy_delayed import DummyDelayedFactory
 from .optional import OptionalFactory
 from .generator import GeneratorFactory
+from .iterator import IteratorFactory
 
 # More Specific Ones First
 from ..error import Location
@@ -29,6 +30,7 @@ _FactoryList = [
     TupleFactory(),
     DummyDelayedFactory(),
     GeneratorFactory(),
+    IteratorFactory(),
     #
     SimpleFactory()
 ]
