@@ -6,6 +6,7 @@ from typing import Callable, Dict, Tuple
 from untypy.impl import DefaultCreationContext
 
 from untypy.error import UntypyAttributeError, UntypyTypeError, Frame, Location
+from untypy.impl.any import AnyChecker
 from untypy.interfaces import CreationContext, TypeChecker, ExecutionContext
 
 Config = namedtuple('PatchConfig', 'verbose')
@@ -13,20 +14,38 @@ Config = namedtuple('PatchConfig', 'verbose')
 DefaultConfig = Config(verbose=True)
 
 
-def patch_module(mod: ModuleType, cfg: Config = DefaultConfig) -> None:
-    if cfg.verbose:
-        print(f"Patching Module: {mod}")
+not_patching = ['__class__']
 
-    if hasattr(mod, "__patched") is True:
+
+def patch_module(mod : ModuleType, cfg: Config = DefaultConfig) -> None:
+    _patch_module_or_class(mod, cfg)
+
+
+def patch_class(clas : type, cfg: Config = DefaultConfig) -> None:
+    _patch_module_or_class(clas, cfg)
+
+
+def _patch_module_or_class(unit, cfg) -> None:
+    if cfg.verbose:
+        if inspect.ismodule(unit):
+            print(f"Patching Module: {unit}")
+        elif inspect.isclass(unit):
+            print(f"Patching Class: {unit}")
+        else:
+            print(f"Skipping: {unit}")
+
+    if hasattr(unit, "__patched") is True:
         # Skip, already patched
         return
 
-    setattr(mod, "__patched", True)
+    setattr(unit, "__patched", True)
 
-    for [name, member] in inspect.getmembers(mod):
-        if inspect.isfunction(member):
-            setattr(mod, name, patch_function(member, cfg))
-        if inspect.isclass(member):
+    for [name, member] in inspect.getmembers(unit):
+        if name in not_patching:
+            pass
+        elif inspect.isfunction(member):
+            setattr(unit, name, patch_function(member, cfg))
+        elif inspect.isclass(member):
             patch_class(member, cfg)
         # else skip
 
@@ -36,31 +55,40 @@ def patch_function(fn: FunctionType, cfg: Config = DefaultConfig) -> Callable:
         if cfg.verbose:
             print(f"Patching Function: {fn.__name__}")
 
-        return TypedFunction(fn, DefaultCreationContext(Location(
+        return TypedFunctionBuilder(fn, DefaultCreationContext(Location(
             file=inspect.getfile(fn),
             line_no=inspect.getsourcelines(fn)[1],
             source_line="".join(inspect.getsourcelines(fn)[0]),
-        )))
+        ))).build()
     else:
         return fn
 
 
-def patch_class(clas, cfg: Config = DefaultConfig) -> None:
-    print(f"WARN: Skipping Class {clas} NIY")
-    pass
-
-
-class TypedFunction(Callable):
+class TypedFunctionBuilder:
     inner: Callable
     spec: inspect.FullArgSpec
     checkers: Dict[str, TypeChecker]
-    __patched: bool
+
+    special_args = ['self', 'cls']
+    method_name_ignore_return = ['__init__']
 
     def __init__(self, inner: Callable, ctx: CreationContext):
         self.inner = inner
         self.spec = inspect.getfullargspec(inner)
         checkers = {}
-        for key in (self.spec.args + ['return']):
+
+        checked_keys = self.spec.args
+        if inner.__name__ in self.method_name_ignore_return:
+            checkers['return'] = AnyChecker()
+        else:
+            checked_keys += ['return']
+
+        # Remove self and cls from checking
+        if checked_keys[0] in self.special_args:
+            checkers[checked_keys[0]] = AnyChecker()
+            checked_keys = checked_keys[1:]
+
+        for key in checked_keys:
             if key not in self.spec.annotations:
                 raise UntypyAttributeError(f"\Missing Annotation for argument '{key}' of function {inner.__name__}\n"
                                            f"{inspect.getfile(inner)}:{inspect.getsourcelines(inner)[1]}\n"
@@ -79,32 +107,61 @@ class TypedFunction(Callable):
             else:
                 checkers[key] = checker
         self.checkers = checkers
-        self.__patched = True
 
-    def __call__(self, *args, **kwargs):
-        # TODO: KWARGS?
-        # first is this fn
-        stack = inspect.stack()[1:]
-        # Use Callers of Callables
-        caller = next((e for e in stack if not e.function == '__call__'), None)
+    def build(self):
+        if len(self.spec.args) > 0 and self.spec.args[0] in self.special_args:
+            return self.build_class_method()
+        else:
+            return self.build_non_class_method()
 
-        new_args = []
-        for (arg, name) in zip(args, self.spec.args):
-            check = self.checkers[name]
-            ctx = ArgumentExecutionContext(self, caller, name)
-            res = check.check_and_wrap(arg, ctx)
-            new_args.append(res)
+    def build_non_class_method(self):
+        me = self
 
-        ret = self.inner(*new_args, **kwargs)
-        check = self.checkers['return']
-        ret = check.check_and_wrap(ret, ReturnExecutionContext(self))
-        return ret
+        def wrapper(*args, **kwargs):
+            # first is this fn
+            caller = inspect.stack()[1]
+
+            new_args = []
+            for (arg, name) in zip(args, me.spec.args):
+                check = me.checkers[name]
+                ctx = ArgumentExecutionContext(me, caller, name)
+                res = check.check_and_wrap(arg, ctx)
+                new_args.append(res)
+
+            ret = me.inner(*new_args, **kwargs)
+            check = me.checkers['return']
+            ret = check.check_and_wrap(ret, ReturnExecutionContext(me))
+            return ret
+
+        return wrapper
+
+    def build_class_method(self):
+        me = self
+        spec_args = me.spec.args[1:] # we need to skip self
+
+        def wrapper(self, *args, **kwargs):
+            # first is this fn
+            caller = inspect.stack()[1]
+
+            new_args = []
+            for (arg, name) in zip(args, spec_args):
+                check = me.checkers[name]
+                ctx = ArgumentExecutionContext(me, caller, name)
+                res = check.check_and_wrap(arg, ctx)
+                new_args.append(res)
+
+            ret = me.inner(self, *new_args, **kwargs)
+            check = me.checkers['return']
+            ret = check.check_and_wrap(ret, ReturnExecutionContext(me))
+            return ret
+
+        return wrapper
 
 
 class ReturnExecutionContext(ExecutionContext):
-    fn: TypedFunction
+    fn: TypedFunctionBuilder
 
-    def __init__(self, fn: TypedFunction):
+    def __init__(self, fn: TypedFunctionBuilder):
         self.fn = fn
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
@@ -131,11 +188,11 @@ class ReturnExecutionContext(ExecutionContext):
 
 
 class ArgumentExecutionContext(ExecutionContext):
-    fn: TypedFunction
+    fn: TypedFunctionBuilder
     stack: inspect.FrameInfo
     argument_name: str
 
-    def __init__(self, fn: TypedFunction, stack: inspect.FrameInfo, argument_name: str):
+    def __init__(self, fn: TypedFunctionBuilder, stack: inspect.FrameInfo, argument_name: str):
         self.fn = fn
         self.stack = stack
         self.argument_name = argument_name
