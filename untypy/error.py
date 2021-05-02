@@ -79,6 +79,18 @@ class UntypyTypeError(TypeError):
     def with_frame(self, frame: Frame) -> UntypyTypeError:
         return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame])
 
+    def last_responsable(self):
+        for f in reversed(self.frames):
+            if f.responsable is not None:
+                return f.responsable
+        return None
+
+    def last_declared(self):
+        for f in reversed(self.frames):
+            if f.declared is not None:
+                return f.declared
+        return None
+
     def __str__(self):
         declared_locs = []
         responsable_locs = []

@@ -109,12 +109,38 @@ class TypedFunctionBuilder:
         self.checkers = checkers
 
     def build(self):
-        if len(self.spec.args) > 0 and self.spec.args[0] in self.special_args:
-            return self.build_class_method()
+        if inspect.isasyncgenfunction(self.inner):
+            # matching type annotation currently not supported
+            return self.build_coroutine()
+        elif inspect.isgeneratorfunction(self.inner):
+            # TODO: Error if return annotation is not Generator or Iterator
+            return self.build_method()
+        elif inspect.iscoroutinefunction(self.inner):
+            return self.build_coroutine()
         else:
-            return self.build_non_class_method()
+            return self.build_method()
 
-    def build_non_class_method(self):
+    def build_coroutine(self):
+        me = self
+
+        async def wrapper(*args, **kwargs):
+            # first is this fn
+            caller = inspect.stack()[1]
+
+            new_args = []
+            for (arg, name) in zip(args, self.spec.args):
+                check = me.checkers[name]
+                ctx = ArgumentExecutionContext(me, caller, name)
+                res = check.check_and_wrap(arg, ctx)
+                new_args.append(res)
+
+            ret = await me.inner(*new_args, **kwargs)
+            check = me.checkers['return']
+            ret = check.check_and_wrap(ret, ReturnExecutionContext(me))
+            return ret
+        return wrapper
+
+    def build_method(self):
         me = self
 
         def wrapper(*args, **kwargs):
@@ -122,7 +148,7 @@ class TypedFunctionBuilder:
             caller = inspect.stack()[1]
 
             new_args = []
-            for (arg, name) in zip(args, me.spec.args):
+            for (arg, name) in zip(args, self.spec.args):
                 check = me.checkers[name]
                 ctx = ArgumentExecutionContext(me, caller, name)
                 res = check.check_and_wrap(arg, ctx)
@@ -132,29 +158,6 @@ class TypedFunctionBuilder:
             check = me.checkers['return']
             ret = check.check_and_wrap(ret, ReturnExecutionContext(me))
             return ret
-
-        return wrapper
-
-    def build_class_method(self):
-        me = self
-        spec_args = me.spec.args[1:] # we need to skip self
-
-        def wrapper(self, *args, **kwargs):
-            # first is this fn
-            caller = inspect.stack()[1]
-
-            new_args = []
-            for (arg, name) in zip(args, spec_args):
-                check = me.checkers[name]
-                ctx = ArgumentExecutionContext(me, caller, name)
-                res = check.check_and_wrap(arg, ctx)
-                new_args.append(res)
-
-            ret = me.inner(self, *new_args, **kwargs)
-            check = me.checkers['return']
-            ret = check.check_and_wrap(ret, ReturnExecutionContext(me))
-            return ret
-
         return wrapper
 
 
