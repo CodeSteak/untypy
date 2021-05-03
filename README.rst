@@ -14,10 +14,13 @@ Current Features:
 - Union
 - list
 - Optional
+- Iterator
+- Generator
+- Checking of class methods
 
 Partially Implemented
 ---------------------
-currently none
+- Async Functions (no unit tests)
 
 
 Dummy Implementation
