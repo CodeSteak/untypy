@@ -2,7 +2,7 @@ import inspect
 
 from collections import namedtuple
 from types import ModuleType, FunctionType
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Tuple, Protocol
 from untypy.impl import DefaultCreationContext
 
 from untypy.error import UntypyAttributeError, UntypyTypeError, Frame, Location
@@ -138,7 +138,12 @@ class TypedFunctionBuilder:
             check = me.checkers['return']
             ret = check.check_and_wrap(ret, ReturnExecutionContext(me))
             return ret
-        return wrapper
+
+        wrap = wrapper
+        # add in signature so it can be retrieved by inspect.
+        sig = inspect.Signature.from_callable(me.inner)
+        setattr(wrap, '__signature__', sig)
+        return wrap
 
     def build_method(self):
         me = self
@@ -158,7 +163,11 @@ class TypedFunctionBuilder:
             check = me.checkers['return']
             ret = check.check_and_wrap(ret, ReturnExecutionContext(me))
             return ret
-        return wrapper
+        wrap = wrapper
+        # add in signature so it can be retrieved by inspect.
+        sig = inspect.Signature.from_callable(me.inner)
+        setattr(wrap, '__signature__', sig)
+        return wrap
 
 
 class ReturnExecutionContext(ExecutionContext):

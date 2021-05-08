@@ -1,3 +1,4 @@
+import inspect
 import unittest
 
 import untypy
@@ -54,3 +55,19 @@ class TestPatching(unittest.TestCase):
         i = c.A(10)
         with self.assertRaises(UntypyTypeError):
             i.add("45")
+
+    def test_patching_does_not_change_signature(self):
+        import test.patching_dummy.patching_does_not_change_signature as p
+
+        sig_before = inspect.getfullargspec(p.fun)
+        sig_meth_before = inspect.getfullargspec(p.SomeClass.meth)
+
+        untypy.enable(recursive=True, root=p)
+
+        sig_after = inspect.getfullargspec(p.fun)
+        sig_meth_after = inspect.getfullargspec(p.SomeClass.meth)
+
+        self.assertEqual(sig_before, sig_after)
+        self.assertEqual(sig_meth_before, sig_meth_after)
+
+
