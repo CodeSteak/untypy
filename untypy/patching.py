@@ -8,20 +8,20 @@ from untypy.impl import DefaultCreationContext
 from untypy.error import UntypyAttributeError, UntypyTypeError, Frame, Location
 from untypy.impl.any import AnyChecker
 from untypy.interfaces import CreationContext, TypeChecker, ExecutionContext
+from untypy.util import WrappedFunction, ArgumentExecutionContext, ReturnExecutionContext
 
 Config = namedtuple('PatchConfig', 'verbose')
 
 DefaultConfig = Config(verbose=True)
 
-
 not_patching = ['__class__']
 
 
-def patch_module(mod : ModuleType, cfg: Config = DefaultConfig) -> None:
+def patch_module(mod: ModuleType, cfg: Config = DefaultConfig) -> None:
     _patch_module_or_class(mod, cfg)
 
 
-def patch_class(clas : type, cfg: Config = DefaultConfig) -> None:
+def patch_class(clas: type, cfg: Config = DefaultConfig) -> None:
     _patch_module_or_class(clas, cfg)
 
 
@@ -64,7 +64,7 @@ def patch_function(fn: FunctionType, cfg: Config = DefaultConfig) -> Callable:
         return fn
 
 
-class TypedFunctionBuilder:
+class TypedFunctionBuilder(WrappedFunction):
     inner: Callable
     spec: inspect.FullArgSpec
     checkers: Dict[str, TypeChecker]
@@ -143,6 +143,12 @@ class TypedFunctionBuilder:
         # add in signature so it can be retrieved by inspect.
         sig = inspect.Signature.from_callable(me.inner)
         setattr(wrap, '__signature__', sig)
+        setattr(wrap, '__wrapped__', self.inner)
+        setattr(wrap, '__name__', self.inner.__name__)
+        setattr(wrap, '__file__', inspect.getfile(self.inner))
+
+        setattr(wrap, '__checkers', self.checkers)
+        setattr(wrap, '__wf', self)
         return wrap
 
     def build_method(self):
@@ -163,93 +169,24 @@ class TypedFunctionBuilder:
             check = me.checkers['return']
             ret = check.check_and_wrap(ret, ReturnExecutionContext(me))
             return ret
+
         wrap = wrapper
         # add in signature so it can be retrieved by inspect.
         sig = inspect.Signature.from_callable(me.inner)
         setattr(wrap, '__signature__', sig)
+        setattr(wrap, '__wrapped__', self.inner)
+        setattr(wrap, '__name__', self.inner.__name__)
+        setattr(wrap, '__file__', inspect.getfile(self.inner))
+
+        setattr(wrap, '__checkers', self.checkers)
+        setattr(wrap, '__wf', self)
         return wrap
 
+    def wrapped_original(self) -> Callable:
+        return self.inner
 
-class ReturnExecutionContext(ExecutionContext):
-    fn: TypedFunctionBuilder
+    def wrapped_fullspec(self) -> inspect.FullArgSpec:
+        return self.spec
 
-    def __init__(self, fn: TypedFunctionBuilder):
-        self.fn = fn
-
-    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
-        (next_ty, indicator) = err.next_type_and_indicator()
-
-        arg_types = []
-        for i, name in enumerate(self.fn.spec.args):
-            arg_types.append(self.fn.checkers[name].describe())
-
-        front_str = f"def {self.fn.inner.__name__}({', '.join(arg_types)}) -> "
-
-        declared = Location(
-            file=inspect.getfile(self.fn.inner),
-            line_no=inspect.getsourcelines(self.fn.inner)[1],
-            source_line="".join(inspect.getsourcelines(self.fn.inner)[0]),
-        )
-
-        return err.with_frame(Frame(
-            front_str + next_ty,
-            (" "*len(front_str)) + indicator,
-            declared=declared,
-            responsable=declared,
-        ))
-
-
-class ArgumentExecutionContext(ExecutionContext):
-    fn: TypedFunctionBuilder
-    stack: inspect.FrameInfo
-    argument_name: str
-
-    def __init__(self, fn: TypedFunctionBuilder, stack: inspect.FrameInfo, argument_name: str):
-        self.fn = fn
-        self.stack = stack
-        self.argument_name = argument_name
-
-    def declared_and_indicator(self, err: UntypyTypeError) -> Tuple[str, str]:
-        (next_ty, indicator) = err.next_type_and_indicator()
-
-        front_types = []
-        back_types = []
-        highlighted = None
-        for i, name in enumerate(self.fn.spec.args):
-            if name == self.argument_name:
-                highlighted = next_ty
-            elif highlighted is None:
-                front_types.append(self.fn.checkers[name].describe())
-            else:
-                back_types.append(self.fn.checkers[name].describe())
-
-        l = len(f"def {self.fn.inner.__name__}({', '.join(front_types)}")
-        if len(front_types) > 0:
-            l += len(', ')
-
-        return f"def {self.fn.inner.__name__}({', '.join(front_types + [highlighted] + back_types)}) ->" \
-               f"  {self.fn.checkers['return'].describe()}", (
-                    " " * l) + indicator
-
-    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
-        (type_declared, indicator_line) = self.declared_and_indicator(err)
-
-        declared = Location(
-            file=inspect.getfile(self.fn.inner),
-            line_no=inspect.getsourcelines(self.fn.inner)[1],
-            source_line="".join(inspect.getsourcelines(self.fn.inner)[0]),
-        )
-
-        responsable = Location(
-            file=self.stack.filename,
-            line_no=self.stack.lineno,
-            source_line=self.stack.code_context[0]
-        )
-
-        frame = Frame(
-            type_declared,
-            indicator_line,
-            declared=declared,
-            responsable=responsable
-        )
-        return err.with_frame(frame)
+    def wrapped_checker(self) -> dict[str, TypeChecker]:
+        return self.checkers

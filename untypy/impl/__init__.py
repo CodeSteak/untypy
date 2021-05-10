@@ -8,6 +8,7 @@ from .callable import CallableFactory
 from .list import ListFactory
 from .literal import LiteralFactory
 from .none import NoneFactory
+from .protocol import ProtocolFactory
 from .simple import SimpleFactory
 from .tuple import TupleFactory
 from .union import UnionFactory
@@ -31,6 +32,7 @@ _FactoryList = [
     DummyDelayedFactory(),
     GeneratorFactory(),
     IteratorFactory(),
+    ProtocolFactory(),
     #
     SimpleFactory()
 ]

@@ -1,4 +1,5 @@
-from typing import Optional
+import inspect
+from typing import Optional, Callable, Tuple
 
 from untypy.error import UntypyTypeError, Frame, Location
 from untypy.interfaces import ExecutionContext, TypeChecker
@@ -72,3 +73,105 @@ class NoResponsabilityWrapper(ExecutionContext):
             err = err.with_frame(frame)
 
         return err
+
+
+class WrappedFunction:
+
+    def wrapped_original(self) -> Callable:
+        raise NotImplementedError
+
+    def wrapped_fullspec(self) -> inspect.FullArgSpec:
+        raise NotImplementedError
+
+    def wrapped_checker(self) -> dict[str, TypeChecker]:
+        raise NotImplementedError
+
+
+class ReturnExecutionContext(ExecutionContext):
+    fn: WrappedFunction
+
+    def __init__(self, fn: WrappedFunction):
+        self.fn = fn
+
+    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        (next_ty, indicator) = err.next_type_and_indicator()
+
+        arg_types = []
+        for i, name in enumerate(self.fn.wrapped_fullspec().args):
+            if name != 'return':
+                arg_types.append(self.fn.wrapped_checker()[name].describe())
+
+        front_str = f"def {self.fn.wrapped_original().__name__}({', '.join(arg_types)}) -> "
+
+        declared = Location(
+            file=inspect.getfile(self.fn.wrapped_original()),
+            line_no=inspect.getsourcelines(self.fn.wrapped_original())[1],
+            source_line="".join(inspect.getsourcelines(self.fn.wrapped_original())[0]),
+        )
+
+        return err.with_frame(Frame(
+            front_str + next_ty,
+            (" "*len(front_str)) + indicator,
+            declared=declared,
+            responsable=declared,
+            ))
+
+
+class ArgumentExecutionContext(ExecutionContext):
+    fn: WrappedFunction
+    stack: inspect.FrameInfo
+    argument_name: str
+
+    def __init__(self, fn: WrappedFunction, stack: Optional[inspect.FrameInfo], argument_name: str):
+        self.fn = fn
+        self.stack = stack
+        self.argument_name = argument_name
+
+    def declared_and_indicator(self, err: UntypyTypeError) -> Tuple[str, str]:
+        (next_ty, indicator) = err.next_type_and_indicator()
+
+        front_types = []
+        back_types = []
+        highlighted = None
+        for i, name in enumerate(self.fn.wrapped_fullspec().args):
+            if name != 'return':
+                if name == self.argument_name:
+                    highlighted = next_ty
+                elif highlighted is None:
+                    front_types.append(self.fn.wrapped_checker()[name].describe())
+                else:
+                    back_types.append(self.fn.wrapped_checker()[name].describe())
+
+        l = len(f"def {self.fn.wrapped_original().__name__}({', '.join(front_types)}")
+        if len(front_types) > 0:
+            l += len(', ')
+
+        return f"def {self.fn.wrapped_original().__name__}({', '.join(front_types + [highlighted] + back_types)}) -> " \
+               f"  {self.fn.wrapped_checker()['return'].describe()}", (
+                       " " * l) + indicator
+
+    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        (type_declared, indicator_line) = self.declared_and_indicator(err)
+
+        declared = Location(
+            file=inspect.getfile(self.fn.wrapped_original()),
+            line_no=inspect.getsourcelines(self.fn.wrapped_original())[1],
+            source_line="".join(inspect.getsourcelines(self.fn.wrapped_original())[0]),
+        )
+
+        if self.stack is not None:
+            responsable = Location(
+                file=self.stack.filename,
+                line_no=self.stack.lineno,
+                source_line=self.stack.code_context[0]
+            )
+        else:
+            responsable = None
+
+        frame = Frame(
+            type_declared,
+            indicator_line,
+            declared=declared,
+            responsable=responsable
+        )
+        return err.with_frame(frame)

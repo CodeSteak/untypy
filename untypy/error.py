@@ -57,8 +57,11 @@ class UntypyTypeError(TypeError):
     expected: str
     expected_indicator: str
     frames: list[Frame]
+    previous_chain: Optional[UntypyTypeError]
 
-    def __init__(self, given: Any, expected: str, expected_indicator: Optional[str] = None, frames: list[Frame] = []):
+    def __init__(self, given: Any, expected: str, expected_indicator: Optional[str] = None, frames: list[Frame] = [],
+                 previous_chain: Optional[UntypyTypeError] = None):
+
         self.given = given
         self.expected = expected
         if expected_indicator is None:
@@ -66,6 +69,7 @@ class UntypyTypeError(TypeError):
 
         self.expected_indicator = expected_indicator
         self.frames = frames.copy()
+        self.previous_chain = previous_chain
 
         super().__init__(self.__str__())
 
@@ -77,7 +81,7 @@ class UntypyTypeError(TypeError):
             return self.expected, "^" * len(self.expected)
 
     def with_frame(self, frame: Frame) -> UntypyTypeError:
-        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame])
+        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame], self.previous_chain)
 
     def last_responsable(self):
         for f in reversed(self.frames):
@@ -111,8 +115,13 @@ class UntypyTypeError(TypeError):
             inside = f"inside of {ty}\n" \
                      f"          {ind}\n"
 
+        if self.previous_chain is None:
+            previous_chain = ""
+        else:
+            previous_chain = self.previous_chain.__str__()
+
         given = "%r" % self.given
-        return (f"\ngiven: {given}\n"
+        return (f"{previous_chain}\ngiven: {given}\n"
             f"expected: {self.expected}\n"
             f"          {self.expected_indicator}\n\n"
             f"{inside}"
