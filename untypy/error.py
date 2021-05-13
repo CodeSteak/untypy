@@ -120,7 +120,7 @@ class UntypyTypeError(TypeError):
         else:
             previous_chain = self.previous_chain.__str__()
 
-        given = "%r" % self.given
+        given = repr(self.given)
         return (f"{previous_chain}\ngiven: {given}\n"
             f"expected: {self.expected}\n"
             f"          {self.expected_indicator}\n\n"
@@ -130,7 +130,19 @@ class UntypyTypeError(TypeError):
 
 
 class UntypyAttributeError(AttributeError):
-    pass
+
+    def __init__(self, message : str, locations : list[Location] = []):
+        self.message = message
+        self.locations = locations.copy()
+
+        super().__init__(self.__str__())
+
+    def with_location(self, loc: Location) -> UntypyAttributeError:
+        return UntypyAttributeError(self.message, self.locations + [loc])
+
+    def __str__(self):
+        locations = '\n'.join(map(str, self.locations))
+        return f"{self.message}\n{locations}"
 
 # given: 43
 # but expected: str

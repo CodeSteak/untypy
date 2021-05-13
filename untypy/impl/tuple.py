@@ -11,7 +11,7 @@ TupleTypeB = type(tuple[str, int])
 class TupleFactory(TypeCheckerFactory):
 
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
-        if type(annotation) is TupleType or type(annotation) is TupleTypeB:
+        if (type(annotation) is TupleType or type(annotation) is TupleTypeB) and annotation.__origin__ == tuple:
             inner = []
             for arg in annotation.__args__:
                 checker = ctx.find_checker(arg)

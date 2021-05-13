@@ -18,7 +18,7 @@ from .generator import GeneratorFactory
 from .iterator import IteratorFactory
 
 # More Specific Ones First
-from ..error import Location
+from ..error import Location, UntypyAttributeError
 
 _FactoryList = [
     AnyFactory(),
@@ -52,3 +52,6 @@ class DefaultCreationContext(CreationContext):
             if res is not None:
                 return res
         return None
+
+    def wrap(self, err: UntypyAttributeError) -> UntypyAttributeError:
+        return err.with_location(self.declared)

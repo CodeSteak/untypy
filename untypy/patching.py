@@ -7,7 +7,7 @@ from untypy.impl import DefaultCreationContext
 
 from untypy.error import UntypyAttributeError, UntypyTypeError, Frame, Location
 from untypy.impl.any import AnyChecker
-from untypy.interfaces import CreationContext, TypeChecker, ExecutionContext
+from untypy.interfaces import CreationContext, TypeChecker, ExecutionContext, WrappedFunctionContextProvider
 from untypy.util import WrappedFunction, ArgumentExecutionContext, ReturnExecutionContext
 
 Config = namedtuple('PatchConfig', 'verbose')
@@ -66,7 +66,7 @@ def patch_function(fn: FunctionType, cfg: Config = DefaultConfig) -> Callable:
 
 class TypedFunctionBuilder(WrappedFunction):
     inner: Callable
-    spec: inspect.FullArgSpec
+    signature: inspect.Signature
     checkers: Dict[str, TypeChecker]
 
     special_args = ['self', 'cls']
@@ -74,14 +74,10 @@ class TypedFunctionBuilder(WrappedFunction):
 
     def __init__(self, inner: Callable, ctx: CreationContext):
         self.inner = inner
-        self.spec = inspect.getfullargspec(inner)
-        checkers = {}
+        self.signature = inspect.signature(inner)
 
-        checked_keys = self.spec.args
-        if inner.__name__ in self.method_name_ignore_return:
-            checkers['return'] = AnyChecker()
-        else:
-            checked_keys += ['return']
+        checkers = {}
+        checked_keys = list(self.signature.parameters)
 
         # Remove self and cls from checking
         if checked_keys[0] in self.special_args:
@@ -89,104 +85,75 @@ class TypedFunctionBuilder(WrappedFunction):
             checked_keys = checked_keys[1:]
 
         for key in checked_keys:
-            if key not in self.spec.annotations:
-                raise UntypyAttributeError(f"\Missing Annotation for argument '{key}' of function {inner.__name__}\n"
-                                           f"{inspect.getfile(inner)}:{inspect.getsourcelines(inner)[1]}\n"
-                                           "Partial Annotation are not supported."
-                                           )
-            checker = ctx.find_checker(self.spec.annotations[key])
+            annotation = self.signature.parameters[key].annotation
+            if annotation is inspect.Parameter.empty:
+                raise ctx.wrap(UntypyAttributeError(f"\Missing Annotation for argument '{key}' of function {inner.__name__}\n"
+                                           "Partial Annotation are not supported."))
+
+            checker = ctx.find_checker(annotation)
             if checker is None:
-                # TODO: Maybe Nicer Error
-                raise UntypyAttributeError(f"\n\tUnsupported Type Annotation: {self.spec.annotations[key]}\n"
-                                           f"\tin argument '{key}' of function {inner.__name__}\n"
-                                           f"\n"
-                                           f"\tdef {inner.__name__}{inspect.signature(inner)}\t\n"
-                                           f"\n"
-                                           f"\t{inspect.getfile(inner)}:{inspect.getsourcelines(inner)[1]}"
-                                           )
+                raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {annotation}\n"
+                                           f"\tin argument '{key}'"))
             else:
                 checkers[key] = checker
+
+        if inner.__name__ in self.method_name_ignore_return:
+            checkers['return'] = AnyChecker()
+        else:
+            annotation = self.signature.return_annotation
+            return_checker = ctx.find_checker(annotation)
+            if return_checker is None:
+                raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {annotation}\n"
+                                           f"\tin return"))
+
+            checkers['return'] = return_checker
+
         self.checkers = checkers
 
     def build(self):
-        if inspect.isasyncgenfunction(self.inner):
-            # matching type annotation currently not supported
-            return self.build_coroutine()
-        elif inspect.isgeneratorfunction(self.inner):
-            # TODO: Error if return annotation is not Generator or Iterator
-            return self.build_method()
-        elif inspect.iscoroutinefunction(self.inner):
-            return self.build_coroutine()
-        else:
-            return self.build_method()
-
-    def build_coroutine(self):
-        me = self
-
-        async def wrapper(*args, **kwargs):
-            # first is this fn
-            caller = inspect.stack()[1]
-
-            new_args = []
-            for (arg, name) in zip(args, self.spec.args):
-                check = me.checkers[name]
-                ctx = ArgumentExecutionContext(me, caller, name)
-                res = check.check_and_wrap(arg, ctx)
-                new_args.append(res)
-
-            ret = await me.inner(*new_args, **kwargs)
-            check = me.checkers['return']
-            ret = check.check_and_wrap(ret, ReturnExecutionContext(me))
-            return ret
-
-        wrap = wrapper
-        # add in signature so it can be retrieved by inspect.
-        sig = inspect.Signature.from_callable(me.inner)
-        setattr(wrap, '__signature__', sig)
-        setattr(wrap, '__wrapped__', self.inner)
-        setattr(wrap, '__name__', self.inner.__name__)
-        setattr(wrap, '__file__', inspect.getfile(self.inner))
-
-        setattr(wrap, '__checkers', self.checkers)
-        setattr(wrap, '__wf', self)
-        return wrap
-
-    def build_method(self):
-        me = self
-
         def wrapper(*args, **kwargs):
             # first is this fn
             caller = inspect.stack()[1]
+            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), args, kwargs)
+            ret = self.inner(*args, **kwargs)
+            return self.wrap_return(ret, ReturnExecutionContext(self))
 
-            new_args = []
-            for (arg, name) in zip(args, self.spec.args):
-                check = me.checkers[name]
-                ctx = ArgumentExecutionContext(me, caller, name)
-                res = check.check_and_wrap(arg, ctx)
-                new_args.append(res)
+        async def async_wrapper(*args, **kwargs):
+            # first is this fn
+            caller = inspect.stack()[1]
+            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), args, kwargs)
+            ret = await self.inner(*args, **kwargs)
+            return self.wrap_return(ret, ReturnExecutionContext(self))
 
-            ret = me.inner(*new_args, **kwargs)
-            check = me.checkers['return']
-            ret = check.check_and_wrap(ret, ReturnExecutionContext(me))
-            return ret
+        if inspect.iscoroutine(self.inner):
+            w = async_wrapper
+        else:
+            w = wrapper
 
-        wrap = wrapper
-        # add in signature so it can be retrieved by inspect.
-        sig = inspect.Signature.from_callable(me.inner)
-        setattr(wrap, '__signature__', sig)
-        setattr(wrap, '__wrapped__', self.inner)
-        setattr(wrap, '__name__', self.inner.__name__)
-        setattr(wrap, '__file__', inspect.getfile(self.inner))
+        setattr(w, '__wrapped__', self.inner)
+        setattr(w, '__name__', self.inner.__name__)
+        setattr(w, '__signature__', self.signature)
+        setattr(w, '__wf', self)
+        return w
 
-        setattr(wrap, '__checkers', self.checkers)
-        setattr(wrap, '__wf', self)
-        return wrap
+    def wrap_arguments(self, ctxprv : WrappedFunctionContextProvider, args, kwargs):
+        bindings = self.signature.bind(*args, **kwargs)
+        bindings.apply_defaults()
+        for name in bindings.arguments:
+            check = self.checkers[name]
+            ctx = ctxprv(name)
+            bindings.arguments[name] = check.check_and_wrap(bindings.arguments[name], ctx)
+        return (bindings.args, bindings.kwargs)
 
-    def wrapped_original(self) -> Callable:
+    def wrap_return(self, ret, ctx: ExecutionContext):
+        check = self.checkers['return']
+        return check.check_and_wrap(ret, ctx)
+
+    def describe(self):
+        return str(self.signature)
+
+    def get_original(self):
         return self.inner
 
-    def wrapped_fullspec(self) -> inspect.FullArgSpec:
-        return self.spec
-
-    def wrapped_checker(self) -> dict[str, TypeChecker]:
-        return self.checkers
+    def checker_for(self, name : str) -> TypeChecker:
+        return self.checkers[name]

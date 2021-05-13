@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Optional, Any, Union
+import inspect
+from typing import Optional, Any, Callable
 
-from untypy.error import  UntypyTypeError, Location
+from untypy.error import UntypyTypeError, Location, UntypyAttributeError
 
 
 class CreationContext:
@@ -10,6 +11,9 @@ class CreationContext:
         raise NotImplementedError
 
     def declared_location(self) -> Location:
+        raise NotImplementedError
+
+    def wrap(self, err: UntypyAttributeError) -> UntypyAttributeError:
         raise NotImplementedError
 
 
@@ -37,3 +41,41 @@ class TypeCheckerFactory:
 
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
         raise NotImplementedError
+
+
+WrappedFunctionContextProvider = Callable[[str], ExecutionContext]
+
+
+class WrappedFunction:
+    def get_original(self):
+        raise NotImplementedError
+
+    def wrap_arguments(self, ctxprv : WrappedFunctionContextProvider, args, kwargs):
+        raise NotImplementedError
+
+    def wrap_return(self, ret, ctx: ExecutionContext):
+        raise NotImplementedError
+
+    def describe(self) -> str:
+        raise NotImplementedError
+
+    def checker_for(self, name : str) -> TypeChecker:
+        raise NotImplementedError
+
+    @staticmethod
+    def find_original(fn):
+        if isinstance(fn, WrappedFunction):
+            return WrappedFunction.find_original(fn.get_original())
+        elif hasattr(fn, '__wf'):
+            return WrappedFunction.find_original(getattr(fn, '__wf').get_original())
+        else:
+            return fn
+
+    @staticmethod
+    def find_location(fn) -> Location:
+        fn = WrappedFunction.find_original(fn)
+        return Location(
+            file=inspect.getfile(fn),
+            line_no=inspect.getsourcelines(fn)[1],
+            source_line="".join(inspect.getsourcelines(fn)[0]),
+        )

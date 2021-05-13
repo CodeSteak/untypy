@@ -70,4 +70,13 @@ class TestPatching(unittest.TestCase):
         self.assertEqual(sig_before, sig_after)
         self.assertEqual(sig_meth_before, sig_meth_after)
 
+    def test_argument_types(self):
+        import test.patching_dummy.argument_types as a
 
+        untypy.enable(recursive=True, root=a)
+
+        self.assertEqual(a.kwargs(c=True, b="hello", a=42), (True, 42, "hello"))
+        with self.assertRaises(UntypyTypeError):
+            a.kwargs(c=True, b="hello", a="not an int")
+
+        self.assertEqual(a.default_args(10), "hello")

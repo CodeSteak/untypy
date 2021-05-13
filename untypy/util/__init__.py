@@ -1,8 +1,9 @@
 import inspect
 from typing import Optional, Callable, Tuple
 
+from untypy.display import IndicatorStr
 from untypy.error import UntypyTypeError, Frame, Location
-from untypy.interfaces import ExecutionContext, TypeChecker
+from untypy.interfaces import ExecutionContext, TypeChecker, WrappedFunction
 
 
 class CompoundTypeExecutionContext(ExecutionContext):
@@ -75,18 +76,6 @@ class NoResponsabilityWrapper(ExecutionContext):
         return err
 
 
-class WrappedFunction:
-
-    def wrapped_original(self) -> Callable:
-        raise NotImplementedError
-
-    def wrapped_fullspec(self) -> inspect.FullArgSpec:
-        raise NotImplementedError
-
-    def wrapped_checker(self) -> dict[str, TypeChecker]:
-        raise NotImplementedError
-
-
 class ReturnExecutionContext(ExecutionContext):
     fn: WrappedFunction
 
@@ -95,30 +84,29 @@ class ReturnExecutionContext(ExecutionContext):
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
         (next_ty, indicator) = err.next_type_and_indicator()
+        return_id = IndicatorStr(next_ty, indicator)
 
-        arg_types = []
-        for i, name in enumerate(self.fn.wrapped_fullspec().args):
-            if name != 'return':
-                arg_types.append(self.fn.wrapped_checker()[name].describe())
+        original = self.fn.get_original()
+        signature = inspect.signature(original)
 
-        front_str = f"def {self.fn.wrapped_original().__name__}({', '.join(arg_types)}) -> "
+        front_sig = []
+        for name in signature.parameters:
+            front_sig.append(f"{name}: {self.fn.checker_for(name).describe()}")
+        front_sig = "(" + (", ".join(front_sig)) + ") -> "
 
-        declared = Location(
-            file=inspect.getfile(self.fn.wrapped_original()),
-            line_no=inspect.getsourcelines(self.fn.wrapped_original())[1],
-            source_line="".join(inspect.getsourcelines(self.fn.wrapped_original())[0]),
-        )
+        return_id = IndicatorStr(front_sig) + return_id
 
+        declared = WrappedFunction.find_location(self.fn)
         return err.with_frame(Frame(
-            front_str + next_ty,
-            (" "*len(front_str)) + indicator,
+            return_id.ty,
+            return_id.indicator,
             declared=declared,
             responsable=declared,
-            ))
+        ))
 
 
 class ArgumentExecutionContext(ExecutionContext):
-    fn: WrappedFunction
+    n: WrappedFunction
     stack: inspect.FrameInfo
     argument_name: str
 
@@ -127,38 +115,24 @@ class ArgumentExecutionContext(ExecutionContext):
         self.stack = stack
         self.argument_name = argument_name
 
-    def declared_and_indicator(self, err: UntypyTypeError) -> Tuple[str, str]:
-        (next_ty, indicator) = err.next_type_and_indicator()
-
-        front_types = []
-        back_types = []
-        highlighted = None
-        for i, name in enumerate(self.fn.wrapped_fullspec().args):
-            if name != 'return':
-                if name == self.argument_name:
-                    highlighted = next_ty
-                elif highlighted is None:
-                    front_types.append(self.fn.wrapped_checker()[name].describe())
-                else:
-                    back_types.append(self.fn.wrapped_checker()[name].describe())
-
-        l = len(f"def {self.fn.wrapped_original().__name__}({', '.join(front_types)}")
-        if len(front_types) > 0:
-            l += len(', ')
-
-        return f"def {self.fn.wrapped_original().__name__}({', '.join(front_types + [highlighted] + back_types)}) -> " \
-               f"  {self.fn.wrapped_checker()['return'].describe()}", (
-                       " " * l) + indicator
-
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
-        (type_declared, indicator_line) = self.declared_and_indicator(err)
+        (next_ty, indicator) = err.next_type_and_indicator()
+        error_id = IndicatorStr(next_ty, indicator)
 
-        declared = Location(
-            file=inspect.getfile(self.fn.wrapped_original()),
-            line_no=inspect.getsourcelines(self.fn.wrapped_original())[1],
-            source_line="".join(inspect.getsourcelines(self.fn.wrapped_original())[0]),
-        )
+        original = self.fn.get_original()
+        signature = inspect.signature(original)
 
+        arglist = []
+        for name in signature.parameters:
+            if name is self.argument_name:
+                arglist.append(IndicatorStr(f"{name}: ") + error_id)
+            else:
+                arglist.append(IndicatorStr(f"{name}: {self.fn.checker_for(name).describe()}"))
+
+        id = IndicatorStr("(") + IndicatorStr(", ").join(arglist) + \
+             IndicatorStr(f") -> {self.fn.checker_for('return').describe()}")
+
+        declared = WrappedFunction.find_location(self.fn)
         if self.stack is not None:
             responsable = Location(
                 file=self.stack.filename,
@@ -169,8 +143,8 @@ class ArgumentExecutionContext(ExecutionContext):
             responsable = None
 
         frame = Frame(
-            type_declared,
-            indicator_line,
+            id.ty,
+            id.indicator,
             declared=declared,
             responsable=responsable
         )
