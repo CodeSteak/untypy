@@ -6,7 +6,7 @@ from typing import Callable, Dict, Tuple, Protocol
 from untypy.impl import DefaultCreationContext
 
 from untypy.error import UntypyAttributeError, UntypyTypeError, Frame, Location
-from untypy.impl.any import AnyChecker
+from untypy.impl.any import AnyChecker, SelfChecker
 from untypy.interfaces import CreationContext, TypeChecker, ExecutionContext, WrappedFunctionContextProvider
 from untypy.util import WrappedFunction, ArgumentExecutionContext, ReturnExecutionContext
 
@@ -98,7 +98,7 @@ class TypedFunctionBuilder(WrappedFunction):
                 checkers[key] = checker
 
         if inner.__name__ in self.method_name_ignore_return:
-            checkers['return'] = AnyChecker()
+            checkers['return'] = SelfChecker()
         else:
             annotation = self.signature.return_annotation
             return_checker = ctx.find_checker(annotation)

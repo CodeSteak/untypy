@@ -57,9 +57,11 @@ class UntypyTypeError(TypeError):
     expected: str
     expected_indicator: str
     frames: list[Frame]
+    notes : list[str]
     previous_chain: Optional[UntypyTypeError]
 
     def __init__(self, given: Any, expected: str, expected_indicator: Optional[str] = None, frames: list[Frame] = [],
+                 notes : list[str] = [],
                  previous_chain: Optional[UntypyTypeError] = None):
 
         self.given = given
@@ -69,9 +71,10 @@ class UntypyTypeError(TypeError):
 
         self.expected_indicator = expected_indicator
         self.frames = frames.copy()
+        self.notes = notes.copy()
         self.previous_chain = previous_chain
 
-        super().__init__(self.__str__())
+        super().__init__('\n'+self.__str__())
 
     def next_type_and_indicator(self) -> Tuple[str, str]:
         if len(self.frames) >= 1:
@@ -81,7 +84,16 @@ class UntypyTypeError(TypeError):
             return self.expected, "^" * len(self.expected)
 
     def with_frame(self, frame: Frame) -> UntypyTypeError:
-        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame], self.previous_chain)
+        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame],
+                               self.notes, self.previous_chain)
+
+    def with_previous_chain(self, previous_chain: UntypyTypeError):
+        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames,
+                               self.notes, previous_chain)
+
+    def with_note(self, note: str):
+        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames,
+                               self.notes + [note], self.previous_chain)
 
     def last_responsable(self):
         for f in reversed(self.frames):
@@ -120,8 +132,12 @@ class UntypyTypeError(TypeError):
         else:
             previous_chain = self.previous_chain.__str__()
 
+        notes = '\n'.join(self.notes)
+        if len(notes) > 0:
+            notes = f"{notes}\n\n"
+
         given = repr(self.given)
-        return (f"{previous_chain}\ngiven: {given}\n"
+        return (f"{previous_chain}\n{notes}given: {given}\n"
             f"expected: {self.expected}\n"
             f"          {self.expected_indicator}\n\n"
             f"{inside}"

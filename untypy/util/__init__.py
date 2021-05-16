@@ -86,13 +86,13 @@ class ReturnExecutionContext(ExecutionContext):
         (next_ty, indicator) = err.next_type_and_indicator()
         return_id = IndicatorStr(next_ty, indicator)
 
-        original = self.fn.get_original()
+        original = WrappedFunction.find_original(self.fn)
         signature = inspect.signature(original)
 
         front_sig = []
         for name in signature.parameters:
             front_sig.append(f"{name}: {self.fn.checker_for(name).describe()}")
-        front_sig = "(" + (", ".join(front_sig)) + ") -> "
+        front_sig = f"{original.__name__}(" + (", ".join(front_sig)) + ") -> "
 
         return_id = IndicatorStr(front_sig) + return_id
 
@@ -119,7 +119,7 @@ class ArgumentExecutionContext(ExecutionContext):
         (next_ty, indicator) = err.next_type_and_indicator()
         error_id = IndicatorStr(next_ty, indicator)
 
-        original = self.fn.get_original()
+        original = WrappedFunction.find_original(self.fn)
         signature = inspect.signature(original)
 
         arglist = []
@@ -129,7 +129,7 @@ class ArgumentExecutionContext(ExecutionContext):
             else:
                 arglist.append(IndicatorStr(f"{name}: {self.fn.checker_for(name).describe()}"))
 
-        id = IndicatorStr("(") + IndicatorStr(", ").join(arglist) + \
+        id = IndicatorStr(f"{original.__name__}(") + IndicatorStr(", ").join(arglist) + \
              IndicatorStr(f") -> {self.fn.checker_for('return').describe()}")
 
         declared = WrappedFunction.find_location(self.fn)

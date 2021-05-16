@@ -105,6 +105,7 @@ class TypedCallableReturnExecutionContext(ExecutionContext):
         desc = lambda s: s.describe()
         front_str = f"Callable[[{', '.join(map(desc, self.fn.argument_checker))}], "
 
+
         responsable = Location(
             file=inspect.getfile(self.fn.inner),
             line_no=inspect.getsourcelines(self.fn.inner)[1],

@@ -1,9 +1,10 @@
 import inspect
-from typing import Protocol, Any, Optional, Callable
+from typing import Protocol, Any, Optional, Callable, Union
 
 from untypy.error import UntypyTypeError, UntypyAttributeError, Frame, Location
-from untypy.impl.any import AnyChecker
-from untypy.interfaces import TypeCheckerFactory, CreationContext, TypeChecker, ExecutionContext
+from untypy.impl.any import AnyChecker, SelfChecker
+from untypy.interfaces import TypeCheckerFactory, CreationContext, TypeChecker, ExecutionContext, \
+    WrappedFunctionContextProvider
 from untypy.util import WrappedFunction, ArgumentExecutionContext, ReturnExecutionContext
 
 
@@ -16,32 +17,41 @@ class ProtocolFactory(TypeCheckerFactory):
             return None
 
 
-def get_proto_members(proto: type, ctx: CreationContext) -> dict[str, (inspect.FullArgSpec, dict[str, TypeChecker])]:
+def get_proto_members(proto: type, ctx: CreationContext) -> dict[str, (inspect.Signature, dict[str, TypeChecker])]:
     blacklist = ['__subclasshook__', '__init__']
     member_dict = {}
     for [name, member] in inspect.getmembers(proto):
         if inspect.isfunction(member) and name not in blacklist:
-            spec = inspect.getfullargspec(member)
-            checked_keys = spec.args + ['return']
+            signature = inspect.signature(member)
             checkers = {}
-            for key in checked_keys:
+            for key in signature.parameters:
                 if key == 'self':
-                    checkers[key] = AnyChecker()
+                    checkers[key] = SelfChecker()
                 else:
-                    if key not in spec.annotations:
-                        raise UntypyAttributeError(
+                    param = signature.parameters[key]
+                    if param.annotation is inspect.Parameter.empty:
+                        raise ctx.wrap(UntypyAttributeError(
                             f"\Missing Annotation for argument '{key}' of function {member.__name__} "
-                            f"in Protocol {proto.__name__}\n"
-                            f"{inspect.getfile(proto)}:{inspect.getsourcelines(proto)[1]}\n")
+                            f"in Protocol {proto.__name__}\n"))
 
-                    checker = ctx.find_checker(spec.annotations[key])
+                    checker = ctx.find_checker(param.annotation)
                     if checker is None:
-                        raise UntypyAttributeError(f"\n\tUnsupported Type Annotation: {spec.annotations[key]}\n"
+                        raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {param.annotation}\n"
                                                    f"for argument '{key}' of function {member.__name__} "
-                                                   f"in Protocol {proto.__name__}.\n"
-                                                   f"{inspect.getfile(proto)}:{inspect.getsourcelines(proto)[1]}\n")
+                                                   f"in Protocol {proto.__name__}.\n"))
                     checkers[key] = checker
-            member_dict[name] = (spec, checkers)
+
+            if signature.return_annotation is inspect.Parameter.empty:
+                raise ctx.wrap(UntypyAttributeError(
+                    f"\Missing Annotation for Return Value of function {member.__name__} "
+                    f"in Protocol {proto.__name__}. Use 'None' if there is no return value.\n"))
+            return_checker = ctx.find_checker(signature.return_annotation)
+            if return_checker is None:
+                raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {signature.return_annotation}\n"
+                                                    f"for Return Value of function {member.__name__} "
+                                                    f"in Protocol {proto.__name__}.\n"))
+            checkers['return'] = return_checker
+            member_dict[name] = (signature, checkers)
     return member_dict
 
 
@@ -55,22 +65,24 @@ class ProtocolChecker(TypeChecker):
         return True
 
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
+        # TODO: Optimise if signatures are equal?
         for name in self.members.keys():
             if not hasattr(arg, name):
-                raise ctx.wrap(UntypyTypeError(arg, self.describe()))  # TODO notes=[f"Missing method '{name}'"]))
+                raise ctx.wrap(UntypyTypeError(arg, self.describe(),
+                                               notes=[f"{type(arg).__name__} is missing method '{name}'."]))
 
         return ProtocolWrapper(arg, self.proto, self.members, ctx)
 
     def base_type(self) -> list[Any]:
-        return [list]
+        return [Protocol]
 
     def describe(self) -> str:
         return f"{self.proto}(Protocol)"
 
 
-class ProtocolWrapper(WrappedFunction):
+class ProtocolWrapper:
 
-    def __init__(self, inner: Any, proto: type, members: dict[str, (inspect.FullArgSpec, dict[str, TypeChecker])],
+    def __init__(self, inner: Any, proto: type, members: dict[str, (inspect.Signature, dict[str, TypeChecker])],
                  ctx: ExecutionContext):
         self.proto = proto
         self.members = members
@@ -78,78 +90,107 @@ class ProtocolWrapper(WrappedFunction):
         self.inner = inner
 
     def __getattr__(self, item):
-        # TODO: Async
+        sig_check = self.members.get(item)
+        if sig_check is None:
+            raise LookupError(f"Protocol {self.proto} does not define a method {item}.")
 
-        (spec, checkers) = self.members[item]
+        (signature, checker) = sig_check
 
-        # TODO: if members[item] does not exist
+        innerfn = getattr(self.inner, item)
+        if hasattr(innerfn, '__wf'):
+            innerfn = getattr(innerfn, '__wf')
+        wf = ProtocolWrappedFunction(self.inner, innerfn, signature, checker, self.proto, self.ctx).build()
 
-        def wrapper_fn(*args, **kwargs):
-            # first is this fn
+        setattr(self, item, wf)
+        return wf
+
+class ProtocolWrappedFunction(WrappedFunction):
+
+    def __init__(self, me, inner: Union[Callable, WrappedFunction], signature: inspect.Signature,
+                 checker: dict[str, TypeChecker],
+                 protocol: type,
+                 ctx: ExecutionContext):
+        self.me = me
+        self.inner = inner
+        self.signature = signature
+        self.checker = checker
+        self.protocol = protocol
+        self.ctx = ctx
+
+    def build(self):
+        fn = WrappedFunction.find_original(self.inner)
+
+        def wrapper(*args, **kwargs):
             caller = inspect.stack()[1]
+            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), (self.me, *args), kwargs)
+            if isinstance(self.inner, WrappedFunction):
+                (args, kwargs) = self.inner.wrap_arguments(lambda n: ProtocolArgumentExecutionContext(self, n), args, kwargs)
+            ret = fn(*args, **kwargs)
+            if isinstance(self.inner, WrappedFunction):
+                ret = self.inner.wrap_return(ret, ReturnExecutionContext(self.inner))
+            return self.wrap_return(ret, ProtocolArgumentExecutionContext(self, 'return'))
 
-            # TODO: KWARGS?
-            f_wrapped = getattr(self.inner, item)  # Should not fail, checked at creation of wrapper
-            if hasattr(f_wrapped, '__checkers'):
-                inner_checkers = getattr(f_wrapped, '__checkers')
-                wf = getattr(f_wrapped, '__wf')
-                f = f_wrapped.__wrapped__
-            else:
-                raise NotImplementedError
+        async def async_wrapper(*args, **kwargs):
+            caller = inspect.stack()[1]
+            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), args, kwargs)
+            if isinstance(self.inner, WrappedFunction):
+                (args, kwargs) = self.inner.wrap_arguments(lambda n: ProtocolArgumentExecutionContext(self, n), args, kwargs)
+            ret = await fn(*args, **kwargs)
+            if isinstance(self.inner, WrappedFunction):
+                ret = self.inner.wrap_return(ret, ReturnExecutionContext(self.inner))
+            return self.wrap_return(ret, ProtocolArgumentExecutionContext(self, 'return'))
 
-            new_args = []
-            for (arg, name) in zip(args, spec.args[1:]):
-                check = checkers[name]
-                # TODO BUG: what if different names
-                ctx = ArgumentExecutionContext(getattr(getattr(self.proto, item), '__wf'), caller, name)
-                res = check.check_and_wrap(arg, ctx)
-                inner_check = inner_checkers.get(name)
-                if inner_check is not None:
-                    ctx = ProtocolArgumentExecutionContext(self.inner, self.proto, checkers, f, name, self.ctx)
-                    res = inner_check.check_and_wrap(res, ctx)
-                new_args.append(res)
-
-            ret = f(self.inner, *new_args, **kwargs)
-            inner_check = inner_checkers.get('return')
-            if inner_check is not None:
-                ret = inner_check.check_and_wrap(ret, ReturnExecutionContext(wf))
-            ret = checkers['return'].check_and_wrap(ret, ProtocolArgumentExecutionContext(self.inner, self.proto, checkers, f, 'return', self.ctx))
-            return ret
-
-        return wrapper_fn
-
-
-class ProtocolArgumentExecutionContext(ExecutionContext, WrappedFunction):
-
-    def __init__(self, self_inst, proto: type, checkers: dict[str, TypeChecker], function: Callable, arg_name: str, upper: ExecutionContext):
-        self.checkers = checkers
-        if hasattr(function, '__wrapped__'):
-            self.function = function.__wrapped__
+        if inspect.iscoroutine(self.inner):
+            w = async_wrapper
         else:
-            self.function = function
+            w = wrapper
+
+        org = WrappedFunction.find_original(self.inner)
+        setattr(w, '__wrapped__', org)
+        setattr(w, '__name__', org.__name__)
+        setattr(w, '__signature__', self.signature)
+        setattr(w, '__wf', self)
+        return w
+
+    def get_original(self):
+        return self.inner
+
+    def wrap_arguments(self, ctxprv: WrappedFunctionContextProvider, args, kwargs):
+        bindings = self.signature.bind(*args, **kwargs)
+        bindings.apply_defaults()
+        for name in bindings.arguments:
+            check = self.checker[name]
+            ctx = ctxprv(name)
+            bindings.arguments[name] = check.check_and_wrap(bindings.arguments[name], ctx)
+        return (bindings.args, bindings.kwargs)
+
+    def wrap_return(self, ret, ctx: ExecutionContext):
+        check = self.checker['return']
+        return check.check_and_wrap(ret, ctx)
+
+    def describe(self) -> str:
+        fn = WrappedFunction.find_original(self.inner)
+        return f"{fn.__name__}" + str(self.signature)
+
+    def checker_for(self, name: str) -> TypeChecker:
+        return self.checker[name]
+
+
+class ProtocolArgumentExecutionContext(ExecutionContext):
+
+    def __init__(self, wf: ProtocolWrappedFunction, arg_name: str):
+        self.wf = wf
         self.arg_name = arg_name
-        self.self_inst = self_inst
-        self.proto = proto
-        self.upper = upper
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        (original_expected, _ind) = err.next_type_and_indicator()
         if self.arg_name == 'return':
-            arg = ReturnExecutionContext(self)
+            arg = ReturnExecutionContext(self.wf)
         else:
-            arg = ArgumentExecutionContext(self, None,  self.arg_name)
+            arg = ArgumentExecutionContext(self.wf, None,  self.arg_name)
         err = arg.wrap(err)
-        # TODO err = err.with_frame(Frame(
-        #     f"{front_str}{next_ty}]",
-        #     (" " * len(front_str)) + indicator,
-        #     declared=None,
-        #     responsable=responsable
-        # ))
 
-        responsable = Location(
-            file=inspect.getfile(self.function),
-            line_no=inspect.getsourcelines(self.function)[1],
-            source_line="".join(inspect.getsourcelines(self.function)[0]),
-        )
+        responsable = WrappedFunction.find_location(self.wf)
 
         (decl, ind) = err.next_type_and_indicator()
         err = err.with_frame(Frame(
@@ -157,24 +198,16 @@ class ProtocolArgumentExecutionContext(ExecutionContext, WrappedFunction):
             ind,
             declared=None,
             responsable=responsable
-        ))
+        )).with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' does violate this Contract.")
 
-        err = UntypyTypeError(
-            self.self_inst,
-            f"{self.proto.__name__}<Protocol>",
-            previous_chain=err
-        )
+        if self.arg_name != 'return':
+            err = err.with_note(f"The annotation '{original_expected}' is incompatible with the Contract's annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against the value '{repr(err.given)}'.")
 
-        return self.upper.wrap(err)
+        previous_chain = UntypyTypeError(
+            self.wf.me,
+            f"{self.wf.protocol.__name__}"
+        ).with_note(f"Type '{type(self.wf.me).__name__}' does not implement Protocol '{self.wf.protocol.__name__}' correctly.")
 
-    def wrapped_original(self) -> Callable:
-        f = getattr(self.proto, self.function.__name__)
-        if hasattr(f, '__wrapped__'):
-            return f.__wrapped__
-        return f
+        previous_chain = self.wf.ctx.wrap(previous_chain)
 
-    def wrapped_fullspec(self) -> inspect.FullArgSpec:
-        return inspect.getfullargspec(self.wrapped_original())
-
-    def wrapped_checker(self) -> dict[str, TypeChecker]:
-        return self.checkers
+        return err.with_previous_chain(previous_chain)
