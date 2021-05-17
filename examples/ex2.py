@@ -14,7 +14,10 @@ lst = adders([1,2,3,4,5,6])
 
 lst.append(lambda x: 0)
 
-lst.append(lambda x: "hello")
+return_some_string_fn = lambda x: "hello"
+
+lst.append(return_some_string_fn)
 
 for fn in lst:
     print(fn(100))
+
