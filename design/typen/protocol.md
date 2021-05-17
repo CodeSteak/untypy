@@ -43,7 +43,7 @@ Note: `@runtime_checkable` ermöglicht dieses checking mit `isinstanceof`
 
 ## enforce
 
-Protocol gibt es erst seit Python 3.8 see (PEP 544) Hat aber probleme bei vererbung.
+Protocol gibt es erst seit Python 3.8 see (PEP 544). Hat Enforce aber schon Probleme bei Vererbung.
 
 ```python
 @enforce.runtime_validation
@@ -69,7 +69,7 @@ Argument 'c' was not of type <class '__main__.Inter'>. Actual type was Concrete.
 
 ## pytypes
 
-Protocol gibt es erst seit Python 3.8 see (PEP 544)
+Protocol gibt es erst seit Python 3.8 see (PEP 544).
 
 ```python
 from pytypes import typechecked
