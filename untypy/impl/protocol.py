@@ -99,6 +99,8 @@ class ProtocolWrapper:
         innerfn = getattr(self.inner, item)
         if hasattr(innerfn, '__wf'):
             innerfn = getattr(innerfn, '__wf')
+        if hasattr(innerfn, '__func__'):
+            innerfn = innerfn.__func__
         wf = ProtocolWrappedFunction(self.inner, innerfn, signature, checker, self.proto, self.ctx).build()
 
         setattr(self, item, wf)
@@ -138,6 +140,7 @@ class ProtocolWrappedFunction(WrappedFunction):
             ret = await fn(*args, **kwargs)
             if isinstance(self.inner, WrappedFunction):
                 ret = self.inner.wrap_return(ret, ReturnExecutionContext(self.inner))
+            print(self)
             return self.wrap_return(ret, ProtocolArgumentExecutionContext(self, 'return'))
 
         if inspect.iscoroutine(self.inner):
@@ -145,9 +148,8 @@ class ProtocolWrappedFunction(WrappedFunction):
         else:
             w = wrapper
 
-        org = WrappedFunction.find_original(self.inner)
-        setattr(w, '__wrapped__', org)
-        setattr(w, '__name__', org.__name__)
+        setattr(w, '__wrapped__', fn)
+        setattr(w, '__name__', fn.__name__)
         setattr(w, '__signature__', self.signature)
         setattr(w, '__wf', self)
         return w
@@ -198,10 +200,16 @@ class ProtocolArgumentExecutionContext(ExecutionContext):
             ind,
             declared=None,
             responsable=responsable
-        )).with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' does violate this Contract.")
+        ))
 
         if self.arg_name != 'return':
+            err = err.with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' does violate this Contract.")
             err = err.with_note(f"The annotation '{original_expected}' is incompatible with the Contract's annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against the value '{repr(err.given)}'.")
+        else:
+            inner = self.wf.inner
+            if isinstance(inner, WrappedFunction):
+                err = err.with_note(f"The return value of method '{WrappedFunction.find_original(self.wf).__name__}' does violate this Contract.")
+                err = err.with_note(f"The annotation of '{inner.checker_for('return').describe()}' is incompatible with the Contract's annotation '{original_expected}'\nwhen checking against the value '{repr(err.given)}'.")
 
         previous_chain = UntypyTypeError(
             self.wf.me,
