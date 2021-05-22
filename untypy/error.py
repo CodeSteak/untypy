@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from enum import Enum
 import inspect
 from typing import Any, Optional, Tuple
 
@@ -22,6 +22,14 @@ class Location:
         if i >= 5:
             buf += "    | ..."
         return buf
+
+    def __repr__(self):
+        return f"Location(file={self.file.__repr__()}, line_no={self.line_no.__repr__()}, source_line={self.source_line.__repr__()})"
+
+    def __eq__(self, other):
+        if not isinstance(other, Location):
+            return False
+        return self.file == other.file and self.line_no == other.line_no
 
 
 class Frame:
@@ -51,6 +59,16 @@ class Frame:
                    f"\n"
         return buf
 
+class ResponsibilityType(Enum):
+    IN = 0
+    OUT = 1
+
+    def invert(self):
+        if self is ResponsibilityType.IN:
+            return ResponsibilityType.OUT
+        else:
+            return ResponsibilityType.IN
+
 
 class UntypyTypeError(TypeError):
     given: Any
@@ -59,11 +77,13 @@ class UntypyTypeError(TypeError):
     frames: list[Frame]
     notes : list[str]
     previous_chain: Optional[UntypyTypeError]
+    responsibility_type: ResponsibilityType
 
     def __init__(self, given: Any, expected: str, expected_indicator: Optional[str] = None, frames: list[Frame] = [],
                  notes : list[str] = [],
-                 previous_chain: Optional[UntypyTypeError] = None):
+                 previous_chain: Optional[UntypyTypeError] = None, responsibility_type : ResponsibilityType = ResponsibilityType.IN):
 
+        self.responsibility_type = responsibility_type
         self.given = given
         self.expected = expected
         if expected_indicator is None:
@@ -85,15 +105,19 @@ class UntypyTypeError(TypeError):
 
     def with_frame(self, frame: Frame) -> UntypyTypeError:
         return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame],
-                               self.notes, self.previous_chain)
+                               self.notes, self.previous_chain, self.responsibility_type)
 
     def with_previous_chain(self, previous_chain: UntypyTypeError):
         return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames,
-                               self.notes, previous_chain)
+                               self.notes, previous_chain, self.responsibility_type)
 
     def with_note(self, note: str):
         return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames,
-                               self.notes + [note], self.previous_chain)
+                               self.notes + [note], self.previous_chain, self.responsibility_type)
+
+    def with_inverted_responsibility_type(self):
+        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames,
+                               self.notes, self.previous_chain, self.responsibility_type.invert())
 
     def last_responsable(self):
         for f in reversed(self.frames):

@@ -1,11 +1,14 @@
 import inspect
 
 from untypy.error import UntypyTypeError, UntypyAttributeError, Frame, Location
-from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
+from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext, WrappedFunction, \
+    WrappedFunctionContextProvider
 from typing import Any, Optional, Callable, Union, Tuple
 from collections.abc import Callable as AbcCallable
 
 # These Types are prefixed with an underscore...
+from untypy.util import NoResponsabilityWrapper
+
 CallableTypeOne = type(Callable[[], None])
 CallableTypeTwo = type(AbcCallable[[], None])
 
@@ -59,7 +62,7 @@ class CallableChecker(TypeChecker):
         return f"Callable[[{arguments}], {self.return_checker.describe()}]"
 
 
-class TypedCallable(Callable):
+class TypedCallable(Callable, WrappedFunction):
     return_checker: TypeChecker
     argument_checker: list[TypeChecker]
     inner: Callable
@@ -82,13 +85,29 @@ class TypedCallable(Callable):
         new_args = []
         i = 0
         for (arg, checker) in zip(args, self.argument_checker):
-            res = checker.check_and_wrap(arg, TypedCallableArgumentExecutionContext(self, caller, i))
+            res = checker.check_and_wrap(arg, TypedCallableArgumentExecutionContext(self, caller, i, self.ctx))
             new_args.append(res)
             i += 1
 
         ret = self.inner(*new_args, **kwargs)
         ret = self.return_checker.check_and_wrap(ret, TypedCallableReturnExecutionContext(self.ctx, self))
         return ret
+
+    def get_original(self):
+        return self.inner
+
+    def wrap_arguments(self, ctxprv: WrappedFunctionContextProvider, args, kwargs):
+        raise NotImplementedError
+
+    def wrap_return(self, ret, ctx: ExecutionContext):
+        raise NotImplementedError
+
+    def describe(self) -> str:
+        arguments = ", ".join(map(lambda e: e.describe(), self.argument_checker))
+        return f"Callable[[{arguments}], {self.return_checker.describe()}]"
+
+    def checker_for(self, name: str) -> TypeChecker:
+        raise NotImplementedError
 
 
 class TypedCallableReturnExecutionContext(ExecutionContext):
@@ -105,12 +124,7 @@ class TypedCallableReturnExecutionContext(ExecutionContext):
         desc = lambda s: s.describe()
         front_str = f"Callable[[{', '.join(map(desc, self.fn.argument_checker))}], "
 
-
-        responsable = Location(
-            file=inspect.getfile(self.fn.inner),
-            line_no=inspect.getsourcelines(self.fn.inner)[1],
-            source_line="\n".join(inspect.getsourcelines(self.fn.inner)[0]),
-        )
+        responsable = WrappedFunction.find_location(self.fn.inner)
 
         err = err.with_frame(Frame(
             f"{front_str}{next_ty}]",
@@ -119,18 +133,22 @@ class TypedCallableReturnExecutionContext(ExecutionContext):
             responsable=responsable
         ))
 
+        err = err.with_inverted_responsibility_type()
+
         return self.upper.wrap(err)
 
 
 class TypedCallableArgumentExecutionContext(ExecutionContext):
+    upper: ExecutionContext
     fn: TypedCallable
     stack: inspect.FrameInfo
     argument_num: int
 
-    def __init__(self, fn: TypedCallable, stack: inspect.FrameInfo, argument_num: int):
+    def __init__(self, fn: TypedCallable, stack: inspect.FrameInfo, argument_num: int, upper: ExecutionContext):
         self.fn = fn
         self.stack = stack
         self.argument_num = argument_num
+        self.upper = upper
 
     def declared_and_indicator(self, err: UntypyTypeError) -> Tuple[str, str]:
         (next_ty, indicator) = err.next_type_and_indicator()
@@ -152,11 +170,7 @@ class TypedCallableArgumentExecutionContext(ExecutionContext):
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
         (type_declared, indicator_line) = self.declared_and_indicator(err)
 
-        declared = Location(
-            file=inspect.getfile(self.fn.inner),
-            line_no=inspect.getsourcelines(self.fn.inner)[1],
-            source_line="\n".join(inspect.getsourcelines(self.fn.inner)[0]),
-        )
+        declared = WrappedFunction.find_location(self.fn.inner)
 
         responsable = Location(
             file=self.stack.filename,
@@ -170,4 +184,4 @@ class TypedCallableArgumentExecutionContext(ExecutionContext):
             declared=declared,
             responsable=responsable,
         )
-        return err.with_frame(frame)
+        return NoResponsabilityWrapper(self.upper).wrap(err.with_frame(frame))

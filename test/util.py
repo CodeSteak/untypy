@@ -1,6 +1,8 @@
+import inspect
+
 from untypy.error import UntypyTypeError, Frame, Location
 from untypy.impl import DefaultCreationContext
-from untypy.interfaces import ExecutionContext
+from untypy.interfaces import ExecutionContext, WrappedFunction
 
 
 class DummyExecutionContext(ExecutionContext):
@@ -27,3 +29,7 @@ class DummyDefaultCreationContext(DefaultCreationContext):
             line_no=0,
             source_line="dummy"
         ))
+
+
+def location_of(fn):
+    return WrappedFunction.find_location(fn)

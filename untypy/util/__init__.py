@@ -73,6 +73,12 @@ class NoResponsabilityWrapper(ExecutionContext):
         for frame in frames_to_add:
             err = err.with_frame(frame)
 
+        for note in full.notes:
+            err = err.with_note(note)
+
+        if full.previous_chain is not None:
+            err = err.with_previous_chain(full.previous_chain)
+
         return err
 
 

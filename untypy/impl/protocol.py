@@ -1,8 +1,8 @@
 import inspect
 from typing import Protocol, Any, Optional, Callable, Union
 
-from untypy.error import UntypyTypeError, UntypyAttributeError, Frame, Location
-from untypy.impl.any import AnyChecker, SelfChecker
+from untypy.error import UntypyTypeError, UntypyAttributeError, Frame, Location, ResponsibilityType
+from untypy.impl.any import SelfChecker
 from untypy.interfaces import TypeCheckerFactory, CreationContext, TypeChecker, ExecutionContext, \
     WrappedFunctionContextProvider
 from untypy.util import WrappedFunction, ArgumentExecutionContext, ReturnExecutionContext
@@ -37,8 +37,8 @@ def get_proto_members(proto: type, ctx: CreationContext) -> dict[str, (inspect.S
                     checker = ctx.find_checker(param.annotation)
                     if checker is None:
                         raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {param.annotation}\n"
-                                                   f"for argument '{key}' of function {member.__name__} "
-                                                   f"in Protocol {proto.__name__}.\n"))
+                                                            f"for argument '{key}' of function {member.__name__} "
+                                                            f"in Protocol {proto.__name__}.\n"))
                     checkers[key] = checker
 
             if signature.return_annotation is inspect.Parameter.empty:
@@ -77,7 +77,7 @@ class ProtocolChecker(TypeChecker):
         return [Protocol]
 
     def describe(self) -> str:
-        return f"{self.proto}(Protocol)"
+        return f"{self.proto.__name__}(Protocol)"
 
 
 class ProtocolWrapper:
@@ -106,6 +106,7 @@ class ProtocolWrapper:
         setattr(self, item, wf)
         return wf
 
+
 class ProtocolWrappedFunction(WrappedFunction):
 
     def __init__(self, me, inner: Union[Callable, WrappedFunction], signature: inspect.Signature,
@@ -121,27 +122,29 @@ class ProtocolWrappedFunction(WrappedFunction):
 
     def build(self):
         fn = WrappedFunction.find_original(self.inner)
+        fn_of_protocol = getattr(getattr(self.protocol, fn.__name__), '__wf')
 
         def wrapper(*args, **kwargs):
             caller = inspect.stack()[1]
-            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), (self.me, *args), kwargs)
+            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(fn_of_protocol, caller, n), (self.me, *args), kwargs)
             if isinstance(self.inner, WrappedFunction):
                 (args, kwargs) = self.inner.wrap_arguments(lambda n: ProtocolArgumentExecutionContext(self, n), args, kwargs)
             ret = fn(*args, **kwargs)
             if isinstance(self.inner, WrappedFunction):
-                ret = self.inner.wrap_return(ret, ReturnExecutionContext(self.inner))
-            return self.wrap_return(ret, ProtocolArgumentExecutionContext(self, 'return'))
+                ret = self.inner.wrap_return(ret, ProtocolReturnExecutionContext(self, ResponsibilityType.IN))
+            return self.wrap_return(ret, ProtocolReturnExecutionContext(self, ResponsibilityType.OUT))
 
         async def async_wrapper(*args, **kwargs):
-            caller = inspect.stack()[1]
-            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), args, kwargs)
-            if isinstance(self.inner, WrappedFunction):
-                (args, kwargs) = self.inner.wrap_arguments(lambda n: ProtocolArgumentExecutionContext(self, n), args, kwargs)
-            ret = await fn(*args, **kwargs)
-            if isinstance(self.inner, WrappedFunction):
-                ret = self.inner.wrap_return(ret, ReturnExecutionContext(self.inner))
-            print(self)
-            return self.wrap_return(ret, ProtocolArgumentExecutionContext(self, 'return'))
+            raise AssertionError("Not correctly implemented see wrapper")
+            # caller = inspect.stack()[1]
+            # (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), args, kwargs)
+            # if isinstance(self.inner, WrappedFunction):
+            #     (args, kwargs) = self.inner.wrap_arguments(lambda n: ProtocolArgumentExecutionContext(self, n), args, kwargs)
+            # ret = await fn(*args, **kwargs)
+            # if isinstance(self.inner, WrappedFunction):
+            #     ret = self.inner.wrap_return(ret, ReturnExecutionContext(self.inner))
+            # print(self)
+            # return self.wrap_return(ret, ProtocolArgumentExecutionContext(self, 'return'))
 
         if inspect.iscoroutine(self.inner):
             w = async_wrapper
@@ -177,20 +180,23 @@ class ProtocolWrappedFunction(WrappedFunction):
     def checker_for(self, name: str) -> TypeChecker:
         return self.checker[name]
 
+    def declared(self) -> Location:
+        fn = WrappedFunction.find_original(self.inner)
+        return WrappedFunction.find_location(getattr(self.protocol, fn.__name__))
 
-class ProtocolArgumentExecutionContext(ExecutionContext):
 
-    def __init__(self, wf: ProtocolWrappedFunction, arg_name: str):
+class ProtocolReturnExecutionContext(ExecutionContext):
+    def __init__(self, wf: ProtocolWrappedFunction, invert: ResponsibilityType):
         self.wf = wf
-        self.arg_name = arg_name
+        self.invert = invert
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
         (original_expected, _ind) = err.next_type_and_indicator()
-        if self.arg_name == 'return':
-            arg = ReturnExecutionContext(self.wf)
-        else:
-            arg = ArgumentExecutionContext(self.wf, None,  self.arg_name)
-        err = arg.wrap(err)
+
+        err = ReturnExecutionContext(self.wf).wrap(err)
+
+        if err.responsibility_type is self.invert:
+            return err
 
         responsable = WrappedFunction.find_location(self.wf)
 
@@ -198,18 +204,45 @@ class ProtocolArgumentExecutionContext(ExecutionContext):
         err = err.with_frame(Frame(
             decl,
             ind,
-            declared=None,
+            declared=self.wf.declared(),
             responsable=responsable
         ))
 
-        if self.arg_name != 'return':
-            err = err.with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' does violate this Contract.")
-            err = err.with_note(f"The annotation '{original_expected}' is incompatible with the Contract's annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against the value '{repr(err.given)}'.")
-        else:
-            inner = self.wf.inner
-            if isinstance(inner, WrappedFunction):
-                err = err.with_note(f"The return value of method '{WrappedFunction.find_original(self.wf).__name__}' does violate this Contract.")
-                err = err.with_note(f"The annotation of '{inner.checker_for('return').describe()}' is incompatible with the Contract's annotation '{original_expected}'\nwhen checking against the value '{repr(err.given)}'.")
+        inner = self.wf.inner
+        if isinstance(inner, WrappedFunction):
+            err = err.with_note(f"The return value of method '{WrappedFunction.find_original(self.wf).__name__}' does violate the Contract '{self.wf.protocol.__name__}'.")
+            err = err.with_note(f"The annotation of '{inner.checker_for('return').describe()}' is incompatible with the Contract's annotation '{self.wf.checker_for('return').describe()}'\nwhen checking against following value:")
+
+        previous_chain = UntypyTypeError(
+            self.wf.me,
+            f"{self.wf.protocol.__name__}"
+        ).with_note(f"Type '{type(self.wf.me).__name__}' does not implement Protocol '{self.wf.protocol.__name__}' correctly.")
+
+        previous_chain = self.wf.ctx.wrap(previous_chain)
+        return err.with_previous_chain(previous_chain)
+
+
+class ProtocolArgumentExecutionContext(ExecutionContext):
+    def __init__(self, wf: ProtocolWrappedFunction, arg_name: str):
+        self.wf = wf
+        self.arg_name = arg_name
+
+    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        (original_expected, _ind) = err.next_type_and_indicator()
+        err = ArgumentExecutionContext(self.wf, None,  self.arg_name).wrap(err)
+
+        responsable = WrappedFunction.find_location(self.wf)
+
+        (decl, ind) = err.next_type_and_indicator()
+        err = err.with_frame(Frame(
+            decl,
+            ind,
+            declared=self.wf.declared(),
+            responsable=responsable
+        ))
+
+        err = err.with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' does violate the Contract '{self.wf.protocol.__name__}'.")
+        err = err.with_note(f"The annotation '{original_expected}' is incompatible with the Contract's annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against following value:")
 
         previous_chain = UntypyTypeError(
             self.wf.me,

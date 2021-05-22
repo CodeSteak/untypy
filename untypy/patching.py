@@ -81,7 +81,7 @@ class TypedFunctionBuilder(WrappedFunction):
 
         # Remove self and cls from checking
         if checked_keys[0] in self.special_args:
-            checkers[checked_keys[0]] = AnyChecker()
+            checkers[checked_keys[0]] = SelfChecker()
             checked_keys = checked_keys[1:]
 
         for key in checked_keys:
