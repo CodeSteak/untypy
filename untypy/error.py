@@ -39,6 +39,8 @@ class Frame:
     declared: Optional[Location]
     responsable: Optional[Location]
 
+    responsibility_type: Optional[ResponsibilityType]
+
     def __init__(self, type_declared: str, indicator_line: Optional[str],
                  declared: Optional[Location], responsable: Optional[Location]):
 
@@ -58,6 +60,7 @@ class Frame:
                    f"{self.responsable.source_line}\n" \
                    f"\n"
         return buf
+
 
 class ResponsibilityType(Enum):
     IN = 0
@@ -91,6 +94,9 @@ class UntypyTypeError(TypeError):
 
         self.expected_indicator = expected_indicator
         self.frames = frames.copy()
+        for frame in self.frames:
+            if frame.responsibility_type is None:
+                frame.responsibility_type = responsibility_type
         self.notes = notes.copy()
         self.previous_chain = previous_chain
 
@@ -104,6 +110,7 @@ class UntypyTypeError(TypeError):
             return self.expected, "^" * len(self.expected)
 
     def with_frame(self, frame: Frame) -> UntypyTypeError:
+        frame.responsibility_type = self.responsibility_type
         return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame],
                                self.notes, self.previous_chain, self.responsibility_type)
 
@@ -121,7 +128,7 @@ class UntypyTypeError(TypeError):
 
     def last_responsable(self):
         for f in reversed(self.frames):
-            if f.responsable is not None:
+            if f.responsable is not None and f.responsibility_type is ResponsibilityType.IN:
                 return f.responsable
         return None
 
@@ -136,7 +143,7 @@ class UntypyTypeError(TypeError):
         responsable_locs = []
 
         for f in self.frames:
-            if f.responsable is not None and str(f.responsable) not in responsable_locs:
+            if f.responsable is not None and f.responsibility_type is ResponsibilityType.IN and str(f.responsable) not in responsable_locs:
                 responsable_locs.append(str(f.responsable))
             if f.declared is not None and str(f.declared) not in declared_locs:
                 declared_locs.append(str(f.declared))

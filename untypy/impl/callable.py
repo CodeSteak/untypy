@@ -133,8 +133,6 @@ class TypedCallableReturnExecutionContext(ExecutionContext):
             responsable=responsable
         ))
 
-        err = err.with_inverted_responsibility_type()
-
         return self.upper.wrap(err)
 
 
@@ -184,4 +182,9 @@ class TypedCallableArgumentExecutionContext(ExecutionContext):
             declared=declared,
             responsable=responsable,
         )
-        return NoResponsabilityWrapper(self.upper).wrap(err.with_frame(frame))
+
+        err = err.with_frame(frame)
+        err = err.with_inverted_responsibility_type()
+        err = self.upper.wrap(err)
+        return err.with_inverted_responsibility_type()
+

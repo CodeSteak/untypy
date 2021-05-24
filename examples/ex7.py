@@ -8,7 +8,7 @@ class Proto(Protocol):
 
 class Concrete:
     def meth(self, c: Callable[[Literal[0,1]], None]) -> None:
-        c(42)
+        c(42) # Violates its own signature of c
 
 def foo(p : Proto) -> None:
     p.meth(lambda x: None)

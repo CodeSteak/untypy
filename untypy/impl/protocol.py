@@ -191,16 +191,14 @@ class ProtocolReturnExecutionContext(ExecutionContext):
         self.invert = invert
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
-        (original_expected, _ind) = err.next_type_and_indicator()
-
         err = ReturnExecutionContext(self.wf).wrap(err)
 
         if err.responsibility_type is self.invert:
             return err
 
         responsable = WrappedFunction.find_location(self.wf)
-
         (decl, ind) = err.next_type_and_indicator()
+        err = err.with_inverted_responsibility_type()
         err = err.with_frame(Frame(
             decl,
             ind,
@@ -211,7 +209,7 @@ class ProtocolReturnExecutionContext(ExecutionContext):
         inner = self.wf.inner
         if isinstance(inner, WrappedFunction):
             err = err.with_note(f"The return value of method '{WrappedFunction.find_original(self.wf).__name__}' does violate the Contract '{self.wf.protocol.__name__}'.")
-            err = err.with_note(f"The annotation of '{inner.checker_for('return').describe()}' is incompatible with the Contract's annotation '{self.wf.checker_for('return').describe()}'\nwhen checking against following value:")
+            err = err.with_note(f"The annotation '{inner.checker_for('return').describe()}' is incompatible with the Contract's annotation '{self.wf.checker_for('return').describe()}'\nwhen checking against the following value:")
 
         previous_chain = UntypyTypeError(
             self.wf.me,
@@ -219,6 +217,7 @@ class ProtocolReturnExecutionContext(ExecutionContext):
         ).with_note(f"Type '{type(self.wf.me).__name__}' does not implement Protocol '{self.wf.protocol.__name__}' correctly.")
 
         previous_chain = self.wf.ctx.wrap(previous_chain)
+
         return err.with_previous_chain(previous_chain)
 
 
@@ -240,9 +239,9 @@ class ProtocolArgumentExecutionContext(ExecutionContext):
             declared=self.wf.declared(),
             responsable=responsable
         ))
-
-        err = err.with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' does violate the Contract '{self.wf.protocol.__name__}'.")
-        err = err.with_note(f"The annotation '{original_expected}' is incompatible with the Contract's annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against following value:")
+        #err = err.with_inverted_responsibility_type()
+        err = err.with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' violates the Contract '{self.wf.protocol.__name__}'.")
+        err = err.with_note(f"The annotation '{original_expected}' is incompatible with the Contract's annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against the following value:")
 
         previous_chain = UntypyTypeError(
             self.wf.me,
