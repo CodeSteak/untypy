@@ -85,7 +85,12 @@ class ProtocolChecker(TypeChecker):
             return ProtocolWrapper(arg, self, ctx)
 
     def base_type(self) -> list[Any]:
-        return [Protocol]
+        # Protocols are distinguishable by method definitions
+        # Note: set would be the better fit, but it is not hashable
+        return ["; ".join(sorted(self.members.keys()))]
+
+    def base_type_priority(self):
+        return [len(self.members.keys())]
 
     def describe(self) -> str:
         return f"{self.proto.__name__}({self.protocol_type()})"

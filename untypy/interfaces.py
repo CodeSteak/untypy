@@ -33,6 +33,10 @@ class TypeChecker:
     def base_type(self) -> list[Any]:
         raise NotImplementedError
 
+    # Higher Priority => checked first inside Union.
+    def base_type_priority(self) -> int:
+        return 0
+
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
         raise NotImplementedError
 

@@ -1,4 +1,6 @@
-from untypy.error import UntypyTypeError
+import inspect
+
+from untypy.error import UntypyTypeError, UntypyAttributeError
 from untypy.impl.protocol import ProtocolChecker
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from typing import Any, Optional, Union
@@ -20,11 +22,21 @@ class ParentProtocolChecker(ProtocolChecker):
 
 class SimpleChecker(TypeChecker):
     annotation: type
-    parent_checker: ParentProtocolChecker
+    parent_checker: Optional[ParentProtocolChecker]
 
     def __init__(self, annotation: type, ctx: CreationContext):
         self.annotation = annotation
-        self.parent_checker = ParentProtocolChecker(annotation, ctx)
+
+        # use protocol like wrapping only there are some signatures
+        if class_has_some_type_signatures(annotation):
+            try:
+                self.parent_checker = ParentProtocolChecker(annotation, ctx)
+            except UntypyAttributeError as e:
+                raise UntypyAttributeError(f"{e.message}\n"
+                                           f"Note: All or None method of a class must annotated if it is used as "
+                                           f"an Annotation. This is because annotated class get wrapped.", e.locations)
+        else:
+            self.parent_checker = None
 
     def may_be_wrapped(self) -> bool:
         return True
@@ -33,7 +45,10 @@ class SimpleChecker(TypeChecker):
         if type(arg) is self.annotation:
             return arg
         if issubclass(type(arg), self.annotation):
-            return self.parent_checker.check_and_wrap(arg, ctx)
+            if self.parent_checker is None:
+                return arg
+            else:
+                return self.parent_checker.check_and_wrap(arg, ctx)
         else:
             raise ctx.wrap(UntypyTypeError(arg, self.describe()))
 
@@ -41,6 +56,16 @@ class SimpleChecker(TypeChecker):
         return self.annotation.__name__
 
     def base_type(self) -> Any:
-        return [self.annotation]
+        if self.parent_checker is not None:
+            return self.parent_checker.base_type()
+        else:
+            return [self.annotation]
 
 
+def class_has_some_type_signatures(clas) -> bool:
+    for [name, member] in inspect.getmembers(clas):
+        if inspect.isfunction(member):
+            if len(inspect.getfullargspec(member).annotations) > 0:
+                return True
+    else:
+        return False

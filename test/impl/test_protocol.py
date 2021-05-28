@@ -1,10 +1,11 @@
 import unittest
-from typing import Protocol, Callable
+from typing import Protocol, Callable, Union
 
 import untypy
 from test.util import DummyDefaultCreationContext, DummyExecutionContext, location_of
 from untypy.error import UntypyTypeError
 from untypy.impl import ProtocolFactory
+from untypy.impl.union import UnionFactory
 
 
 class A:
@@ -135,3 +136,36 @@ class TestProtocol(unittest.TestCase):
         instance = self.checker_return.check_and_wrap(Concrete(), DummyExecutionContext())
 
         self.assertEqual(type(instance), Concrete)
+
+    def test_union_protocols(self):
+        class U1:
+            def meth(self) -> str:
+                return "s"
+
+        class U2:
+            def meth(self) -> int:
+                return 42
+
+            def meth2(self) -> int:
+                return 42
+
+        untypy.patch(U1)
+        untypy.patch(U2)
+
+        # when wrapping order matters
+        UnionFactory()\
+            .create_from(Union[U1, U2], DummyDefaultCreationContext())\
+            .check_and_wrap(U1(), DummyExecutionContext())\
+            .meth()
+        UnionFactory() \
+            .create_from(Union[U1, U2], DummyDefaultCreationContext()) \
+            .check_and_wrap(U2(), DummyExecutionContext()) \
+            .meth()
+        UnionFactory() \
+            .create_from(Union[U2, U1], DummyDefaultCreationContext()) \
+            .check_and_wrap(U1(), DummyExecutionContext()) \
+            .meth()
+        UnionFactory() \
+            .create_from(Union[U2, U1], DummyDefaultCreationContext()) \
+            .check_and_wrap(U2(), DummyExecutionContext()) \
+            .meth()

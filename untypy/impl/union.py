@@ -28,7 +28,8 @@ class UnionChecker(TypeChecker):
     inner: list[TypeChecker]
 
     def __init__(self, inner: list[TypeChecker]):
-        self.inner = inner
+        # especially Protocols must be checked in a specific order.
+        self.inner = sorted(inner, key=lambda t: -t.base_type_priority())
         dups = dict()
         for checker in inner:
             for base_type in checker.base_type():
@@ -36,7 +37,10 @@ class UnionChecker(TypeChecker):
                     raise UntypyAttributeError(f"{checker.describe()} is in conflict with "
                                                f"{dups[base_type].describe()} "
                                                f"in {self.describe()}. "
-                                               f"Types must be distinguishable inside one Union.")
+                                               f"Types must be distinguishable inside one Union."
+                                               f"\nNote: Classes can only be distinguished if its methodnames differ "
+                                               f"as child classes may get wrapped."
+                                               f"\nNote: Multiple Callables or Generics inside one Union are also unsupported.")
                 else:
                     dups[base_type] = checker
 
