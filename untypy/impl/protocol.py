@@ -82,40 +82,41 @@ class ProtocolChecker(TypeChecker):
         if not signature_diff:
             return arg
         else:
-            return ProtocolWrapper(arg, self.proto, self.members, ctx)
+            return ProtocolWrapper(arg, self, ctx)
 
     def base_type(self) -> list[Any]:
         return [Protocol]
 
     def describe(self) -> str:
-        return f"{self.proto.__name__}(Protocol)"
+        return f"{self.proto.__name__}({self.protocol_type()})"
+
+    def protocol_type(self) -> str:
+        return f"Protocol"
 
 
 class ProtocolWrapper:
 
-    def __init__(self, inner: Any, proto: type, members: dict[str, (inspect.Signature, dict[str, TypeChecker])],
-                 ctx: ExecutionContext):
+    def __init__(self, inner: Any, proto: ProtocolChecker, ctx :ExecutionContext):
         if type(inner) is ProtocolWrapper:
-            inner = inner.inner
+            inner = inner.__inner
 
-        self.proto = proto
-        self.members = members
-        self.ctx = ctx
-        self.inner = inner
+        self.__ctx = ctx
+        self.__proto = proto
+        self.__inner = inner
 
     def __getattr__(self, item):
-        sig_check = self.members.get(item)
+        sig_check = self.__proto.members.get(item)
         if sig_check is None:
-            raise LookupError(f"Protocol {self.proto} does not define a method {item}.")
+            raise LookupError(f"Protocol {self.__proto.proto.__name__} does not define a method {item}.")
 
         (signature, checker) = sig_check
 
-        innerfn = getattr(self.inner, item)
+        innerfn = getattr(self.__inner, item)
         if hasattr(innerfn, '__wf'):
             innerfn = getattr(innerfn, '__wf')
         if hasattr(innerfn, '__func__'):
             innerfn = innerfn.__func__
-        wf = ProtocolWrappedFunction(self.inner, innerfn, signature, checker, self.proto, self.ctx).build()
+        wf = ProtocolWrappedFunction(self.__inner, innerfn, signature, checker, self.__proto, self.__ctx).build()
 
         setattr(self, item, wf)
         return wf
@@ -125,7 +126,7 @@ class ProtocolWrappedFunction(WrappedFunction):
 
     def __init__(self, me, inner: Union[Callable, WrappedFunction], signature: inspect.Signature,
                  checker: dict[str, TypeChecker],
-                 protocol: type,
+                 protocol: ProtocolChecker,
                  ctx: ExecutionContext):
         self.me = me
         self.inner = inner
@@ -136,7 +137,7 @@ class ProtocolWrappedFunction(WrappedFunction):
 
     def build(self):
         fn = WrappedFunction.find_original(self.inner)
-        fn_of_protocol = getattr(getattr(self.protocol, fn.__name__), '__wf')
+        fn_of_protocol = getattr(getattr(self.protocol.proto, fn.__name__), '__wf')
 
         def wrapper(*args, **kwargs):
             caller = inspect.stack()[1]
@@ -196,7 +197,7 @@ class ProtocolWrappedFunction(WrappedFunction):
 
     def declared(self) -> Location:
         fn = WrappedFunction.find_original(self.inner)
-        return WrappedFunction.find_location(getattr(self.protocol, fn.__name__))
+        return WrappedFunction.find_location(getattr(self.protocol.proto, fn.__name__))
 
 
 class ProtocolReturnExecutionContext(ExecutionContext):
@@ -222,13 +223,13 @@ class ProtocolReturnExecutionContext(ExecutionContext):
 
         inner = self.wf.inner
         if isinstance(inner, WrappedFunction):
-            err = err.with_note(f"The return value of method '{WrappedFunction.find_original(self.wf).__name__}' does violate the Contract '{self.wf.protocol.__name__}'.")
-            err = err.with_note(f"The annotation '{inner.checker_for('return').describe()}' is incompatible with the Contract's annotation '{self.wf.checker_for('return').describe()}'\nwhen checking against the following value:")
+            err = err.with_note(f"The return value of method '{WrappedFunction.find_original(self.wf).__name__}' does violate the {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}'.")
+            err = err.with_note(f"The annotation '{inner.checker_for('return').describe()}' is incompatible with the {self.wf.protocol.protocol_type()}'s annotation '{self.wf.checker_for('return').describe()}'\nwhen checking against the following value:")
 
         previous_chain = UntypyTypeError(
             self.wf.me,
-            f"{self.wf.protocol.__name__}"
-        ).with_note(f"Type '{type(self.wf.me).__name__}' does not implement Protocol '{self.wf.protocol.__name__}' correctly.")
+            f"{self.wf.protocol.proto.__name__}"
+        ).with_note(f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}' correctly.")
 
         previous_chain = self.wf.ctx.wrap(previous_chain)
 
@@ -254,13 +255,13 @@ class ProtocolArgumentExecutionContext(ExecutionContext):
             responsable=responsable
         ))
 
-        err = err.with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' violates the Contract '{self.wf.protocol.__name__}'.")
-        err = err.with_note(f"The annotation '{original_expected}' is incompatible with the Contract's annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against the following value:")
+        err = err.with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' violates the {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}'.")
+        err = err.with_note(f"The annotation '{original_expected}' is incompatible with the {self.wf.protocol.protocol_type()}'s annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against the following value:")
 
         previous_chain = UntypyTypeError(
             self.wf.me,
-            f"{self.wf.protocol.__name__}"
-        ).with_note(f"Type '{type(self.wf.me).__name__}' does not implement Protocol '{self.wf.protocol.__name__}' correctly.")
+            f"{self.wf.protocol.proto.__name__}"
+        ).with_note(f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}' correctly.")
 
         previous_chain = self.wf.ctx.wrap(previous_chain)
 
