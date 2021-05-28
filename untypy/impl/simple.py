@@ -1,4 +1,5 @@
 from untypy.error import UntypyTypeError
+from untypy.impl.protocol import ProtocolChecker
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from typing import Any, Optional, Union
 
@@ -7,20 +8,32 @@ class SimpleFactory(TypeCheckerFactory):
 
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
         if type(annotation) is type:
-            return SimpleChecker(annotation)
+            return SimpleChecker(annotation, ctx)
         else:
             return None
 
 
+class ParentProtocolChecker(ProtocolChecker):
+    def protocol_type(self) -> str:
+        return "Parent"
+
+
 class SimpleChecker(TypeChecker):
     annotation: type
+    parent_checker: ParentProtocolChecker
 
-    def __init__(self, annotation: type):
+    def __init__(self, annotation: type, ctx: CreationContext):
         self.annotation = annotation
+        self.parent_checker = ParentProtocolChecker(annotation, ctx)
+
+    def may_be_wrapped(self) -> bool:
+        return True
 
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
-        if issubclass(type(arg), self.annotation):
+        if type(arg) is self.annotation:
             return arg
+        if issubclass(type(arg), self.annotation):
+            return self.parent_checker.check_and_wrap(arg, ctx)
         else:
             raise ctx.wrap(UntypyTypeError(arg, self.describe()))
 
@@ -29,3 +42,5 @@ class SimpleChecker(TypeChecker):
 
     def base_type(self) -> Any:
         return [self.annotation]
+
+

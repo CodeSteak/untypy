@@ -11,11 +11,10 @@ from untypy.interfaces import CreationContext, TypeChecker, ExecutionContext, Wr
 from untypy.util import WrappedFunction, ArgumentExecutionContext, ReturnExecutionContext
 
 Config = namedtuple('PatchConfig', 'verbose')
-
 DefaultConfig = Config(verbose=True)
-
 not_patching = ['__class__']
 
+GlobalPatchedList = set()
 
 def patch_module(mod: ModuleType, cfg: Config = DefaultConfig) -> None:
     _patch_module_or_class(mod, cfg)
@@ -34,11 +33,12 @@ def _patch_module_or_class(unit, cfg) -> None:
         else:
             print(f"Skipping: {unit}")
 
-    if hasattr(unit, "__patched") is True:
-        # Skip, already patched
+    if unit in GlobalPatchedList:
+        if cfg.verbose:
+            print(f" Skip, already patched")
         return
 
-    setattr(unit, "__patched", True)
+    GlobalPatchedList.add(unit)
 
     for [name, member] in inspect.getmembers(unit):
         if name in not_patching:

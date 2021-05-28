@@ -1,5 +1,6 @@
 import unittest
 
+import untypy
 from untypy.error import UntypyTypeError
 from untypy.impl import DefaultCreationContext
 from untypy.impl.simple import SimpleFactory
@@ -14,6 +15,14 @@ class ChildOfA(A):
 
 class B:
     pass
+
+class SomeParent:
+    def meth(self) -> str:
+        return "Hello"
+
+class ChildOfSomeParent(SomeParent):
+    def meth(self) -> int: # Signature does not match.
+        return 42
 
 class TestSimple(unittest.TestCase):
 
@@ -42,3 +51,13 @@ class TestSimple(unittest.TestCase):
 
         # This DummyExecutionContext is responsable
         self.assertEqual(cm.exception.last_responsable().file, "dummy")
+
+    def test_wrap_inheritance(self):
+        untypy.patch(SomeParent)
+        untypy.patch(ChildOfSomeParent)
+
+        checker = SimpleFactory().create_from(SomeParent, DummyDefaultCreationContext())
+
+        res = checker.check_and_wrap(ChildOfSomeParent(), DummyExecutionContext())
+        with self.assertRaises(UntypyTypeError) as cm:
+            res.meth()
