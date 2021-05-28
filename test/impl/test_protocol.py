@@ -10,8 +10,10 @@ from untypy.impl import ProtocolFactory
 class A:
     pass
 
+class ParrentB:
+    pass
 
-class B:
+class B(ParrentB):
     pass
 
 
@@ -52,7 +54,7 @@ class TestProtocol(unittest.TestCase):
 
     def test_receiving_wrong_arguments(self):
         class Concrete:
-            def meth(self, b: B) -> None:
+            def meth(self, b: ParrentB) -> None:
                 pass
 
         untypy.patch(Concrete)
@@ -125,29 +127,11 @@ class TestProtocol(unittest.TestCase):
         self.assertEqual(cm.exception.last_responsable(), location_of(Concrete.meth))
         self.assertEqual(cm.exception.last_declared(), location_of(ProtoReturnB.meth))
 
-    def test_example_callables(self):
-        # class Proto(Protocol):
-        #     def meth(self) -> Callable[[A], None]:
-        #         raise NotImplementedError
-        #
-        # class Concrete:
-        #     def meth(self) -> Callable[[B], None]:
-        #         return
-        #
-        # untypy.patch(Proto)
-        # untypy.patch(Concrete)
-        #
-        # checker = ProtocolFactory().create_from(Proto, DummyDefaultCreationContext())
-        # instance = checker.check_and_wrap(Concrete(), DummyExecutionContext())
-        #
-        # with self.assertRaises(UntypyTypeError) as cm:
-        #     instance.meth(lambda x: None)
-        #
-        # (t, i) = cm.exception.next_type_and_indicator()
-        # i = i.rstrip()
-        # print(cm.exception)
-        # self.assertEqual(t, "meth(self: Self, c: Callable[[B], None]) -> None")
-        # self.assertEqual(i, "                              ^")
-        # self.assertEqual(cm.exception.last_responsable(), location_of(Concrete.meth))
-        # self.assertEqual(cm.exception.last_declared(), location_of(Proto.meth))
-        pass
+    def test_not_patching_if_signature_eq(self):
+        class Concrete:
+            def meth(self) -> B:
+                return B()
+        untypy.patch(Concrete)
+        instance = self.checker_return.check_and_wrap(Concrete(), DummyExecutionContext())
+
+        self.assertEqual(type(instance), Concrete)

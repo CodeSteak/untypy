@@ -66,12 +66,23 @@ class ProtocolChecker(TypeChecker):
 
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
         # TODO: Optimise if signatures are equal?
+        signature_diff = False
         for name in self.members.keys():
             if not hasattr(arg, name):
                 raise ctx.wrap(UntypyTypeError(arg, self.describe(),
                                                notes=[f"{type(arg).__name__} is missing method '{name}'."]))
-
-        return ProtocolWrapper(arg, self.proto, self.members, ctx)
+            if not signature_diff:
+                if hasattr(getattr(arg, name), '__signature__'):
+                    arg_signature = getattr(arg, name).__signature__
+                    (prot_signature, _protdict) = self.members[name]
+                    if prot_signature != arg_signature:
+                        signature_diff = True
+                else:
+                    signature_diff = True
+        if not signature_diff:
+            return arg
+        else:
+            return ProtocolWrapper(arg, self.proto, self.members, ctx)
 
     def base_type(self) -> list[Any]:
         return [Protocol]
