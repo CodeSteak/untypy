@@ -84,6 +84,9 @@ class ProtocolWrapper:
 
     def __init__(self, inner: Any, proto: type, members: dict[str, (inspect.Signature, dict[str, TypeChecker])],
                  ctx: ExecutionContext):
+        if type(inner) is ProtocolWrapper:
+            inner = inner.inner
+
         self.proto = proto
         self.members = members
         self.ctx = ctx
@@ -239,7 +242,7 @@ class ProtocolArgumentExecutionContext(ExecutionContext):
             declared=self.wf.declared(),
             responsable=responsable
         ))
-        #err = err.with_inverted_responsibility_type()
+
         err = err.with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' violates the Contract '{self.wf.protocol.__name__}'.")
         err = err.with_note(f"The annotation '{original_expected}' is incompatible with the Contract's annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against the following value:")
 
