@@ -33,13 +33,13 @@ class CallableChecker(TypeChecker):
         # TODO:
         return_checker = ctx.find_checker(return_ty)
         if return_checker is None:
-            raise UntypyAttributeError(f"TODO ERROR MESSAGE - Return Type Annotation not found. {return_ty}")
+            raise ctx.wrap(UntypyAttributeError(f"Return Type Annotation not found. {return_ty}"))
 
         argument_checker = []
         for arg in arguments_ty:
             checker = ctx.find_checker(arg)
             if checker is None:
-                raise UntypyAttributeError(f"TODO ERROR MESSAGE - Argument Type Annotation not found. {arg}")
+                raise ctx.wrap(UntypyAttributeError(f"Argument Type Annotation not found. {arg}"))
             argument_checker.append(checker)
 
         self.return_checker = return_checker

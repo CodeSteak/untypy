@@ -29,12 +29,7 @@ class SimpleChecker(TypeChecker):
 
         # use protocol like wrapping only there are some signatures
         if class_has_some_type_signatures(annotation):
-            try:
-                self.parent_checker = ParentProtocolChecker(annotation, ctx)
-            except UntypyAttributeError as e:
-                raise UntypyAttributeError(f"{e.message}\n"
-                                           f"Note: All or None method of a class must annotated if it is used as "
-                                           f"an Annotation. This is because annotated class get wrapped.", e.locations)
+            self.parent_checker = ParentProtocolChecker(annotation, ctx)
         else:
             self.parent_checker = None
 

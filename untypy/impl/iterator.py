@@ -14,11 +14,11 @@ class IteratorFactory(TypeCheckerFactory):
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
         if type(annotation) == IteratorType and annotation.__origin__ == collections.abc.Iterator:
             if len(annotation.__args__) != 1:
-                raise UntypyAttributeError(f"Expected 1 type arguments for iterator.")
+                raise ctx.wrap(UntypyAttributeError(f"Expected 1 type arguments for iterator."))
 
             inner = ctx.find_checker(annotation.__args__[0])
             if inner is None:
-                raise UntypyAttributeError(f"The inner type of the iterator could not be resolved.")
+                raise ctx.wrap(UntypyAttributeError(f"The inner type of the iterator could not be resolved."))
             return IteratorChecker(inner)
         else:
             return None

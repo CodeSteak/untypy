@@ -13,16 +13,16 @@ class GeneratorFactory(TypeCheckerFactory):
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
         if type(annotation) == GeneratorType and annotation.__origin__ == collections.abc.Generator:
             if len(annotation.__args__) != 3:
-                raise UntypyAttributeError(f"Expected 3 type arguments for Generator.")
+                raise ctx.wrap(UntypyAttributeError(f"Expected 3 type arguments for Generator."))
 
             (yield_checker, send_checker, return_checker) = list(map(lambda a: ctx.find_checker(a), annotation.__args__))
 
             if yield_checker is None:
-                raise UntypyAttributeError(f"The Yield Annotation of the Generator could not be resolved.")
+                raise ctx.wrap(UntypyAttributeError(f"The Yield Annotation of the Generator could not be resolved."))
             if send_checker is None:
-                raise UntypyAttributeError(f"The Send Annotation of the Generator could not be resolved.")
+                raise ctx.wrap(UntypyAttributeError(f"The Send Annotation of the Generator could not be resolved."))
             if return_checker is None:
-                raise UntypyAttributeError(f"The Return Annotation of the Generator could not be resolved.")
+                raise ctx.wrap(UntypyAttributeError(f"The Return Annotation of the Generator could not be resolved."))
 
             return GeneratorChecker(yield_checker, send_checker, return_checker)
         else:
