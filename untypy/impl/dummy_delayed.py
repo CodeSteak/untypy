@@ -1,7 +1,6 @@
 from typing import Any, Optional
 
 from untypy.error import UntypyTypeError
-from untypy.impl.none import NoneChecker
 from untypy.interfaces import TypeChecker, CreationContext, TypeCheckerFactory, ExecutionContext
 
 

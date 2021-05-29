@@ -1,9 +1,9 @@
 import inspect
+from typing import Any, Optional
 
-from untypy.error import UntypyTypeError, UntypyAttributeError
+from untypy.error import UntypyTypeError
 from untypy.impl.protocol import ProtocolChecker
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
-from typing import Any, Optional, Union
 
 
 class SimpleFactory(TypeCheckerFactory):

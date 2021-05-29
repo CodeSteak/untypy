@@ -1,5 +1,5 @@
 import inspect
-from typing import Optional, Callable, Tuple
+from typing import Optional
 
 from untypy.display import IndicatorStr
 from untypy.error import UntypyTypeError, Frame, Location
@@ -26,7 +26,7 @@ class CompoundTypeExecutionContext(ExecutionContext):
         raise NotImplementedError
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
-        type_declared = self.name()+"["
+        type_declared = self.name() + "["
         indicator = " " * len(type_declared)
 
         for i, checker in enumerate(self.checkers):

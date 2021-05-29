@@ -1,7 +1,6 @@
-from untypy.error import UntypyTypeError, UntypyAttributeError
-from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
-from typing import Any, Optional, Union, Literal
+from typing import Any, Optional, Union
 
+from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from untypy.util import CompoundTypeExecutionContext
 
 UnionType = type(Union[int, str])

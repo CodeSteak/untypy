@@ -1,11 +1,9 @@
 import unittest
-from typing import Callable
 
+from test.util import DummyExecutionContext, DummyDefaultCreationContext
 from untypy.error import UntypyTypeError
 from untypy.impl.dummy_delayed import DummyDelayedType
-from untypy.impl.list import ListFactory, TypedList
-from test.util import DummyExecutionContext, DummyDefaultCreationContext
-from untypy.impl import DefaultCreationContext
+from untypy.impl.list import ListFactory
 
 
 class TestList(unittest.TestCase):
@@ -30,10 +28,10 @@ class TestList(unittest.TestCase):
         self.assertEqual(self.normal_list, self.wrapped_list)
 
     def test_error_delayed(self):
-        checker = ListFactory()\
+        checker = ListFactory() \
             .create_from(list[DummyDelayedType], DummyDefaultCreationContext())
 
-        lst = checker\
+        lst = checker \
             .check_and_wrap([1], DummyExecutionContext())
 
         res = lst[0]
@@ -47,7 +45,6 @@ class TestList(unittest.TestCase):
         self.assertEqual(i, "     ^^^^^^^^^^^^^^^^")
 
         self.assertEqual(cm.exception.last_responsable().file, "dummy")
-
 
     def test_wrapping_resp(self):
         """

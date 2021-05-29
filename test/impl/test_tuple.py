@@ -1,11 +1,10 @@
 import unittest
 from typing import Tuple
 
+from test.util import DummyExecutionContext, DummyDefaultCreationContext
 from untypy.error import UntypyTypeError
-from untypy.impl import DefaultCreationContext
 from untypy.impl.dummy_delayed import DummyDelayedType
 from untypy.impl.tuple import TupleFactory
-from test.util import DummyExecutionContext, DummyDefaultCreationContext
 
 
 class TestTuple(unittest.TestCase):

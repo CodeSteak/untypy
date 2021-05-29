@@ -1,6 +1,6 @@
-from untypy.error import UntypyTypeError
+from typing import Any, Optional
+
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
-from typing import Any, Optional, Union
 
 
 class AnyFactory(TypeCheckerFactory):

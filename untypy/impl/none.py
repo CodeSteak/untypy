@@ -1,6 +1,7 @@
+from typing import Any, Optional
+
 from untypy.error import UntypyTypeError
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
-from typing import Any, Optional
 
 
 class NoneFactory(TypeCheckerFactory):

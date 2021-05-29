@@ -1,10 +1,10 @@
 import inspect
 import unittest
 
+import test.patching_dummy.unpatched
 import untypy
 from untypy.error import UntypyTypeError
 
-import test.patching_dummy.unpatched
 
 class TestPatching(unittest.TestCase):
 

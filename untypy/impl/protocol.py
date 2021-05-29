@@ -101,7 +101,7 @@ class ProtocolChecker(TypeChecker):
 
 class ProtocolWrapper:
 
-    def __init__(self, inner: Any, proto: ProtocolChecker, ctx :ExecutionContext):
+    def __init__(self, inner: Any, proto: ProtocolChecker, ctx: ExecutionContext):
         if type(inner) is ProtocolWrapper:
             inner = inner.__inner
 
@@ -146,9 +146,11 @@ class ProtocolWrappedFunction(WrappedFunction):
 
         def wrapper(*args, **kwargs):
             caller = inspect.stack()[1]
-            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(fn_of_protocol, caller, n), (self.me, *args), kwargs)
+            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(fn_of_protocol, caller, n),
+                                                 (self.me, *args), kwargs)
             if isinstance(self.inner, WrappedFunction):
-                (args, kwargs) = self.inner.wrap_arguments(lambda n: ProtocolArgumentExecutionContext(self, n), args, kwargs)
+                (args, kwargs) = self.inner.wrap_arguments(lambda n: ProtocolArgumentExecutionContext(self, n), args,
+                                                           kwargs)
             ret = fn(*args, **kwargs)
             if isinstance(self.inner, WrappedFunction):
                 ret = self.inner.wrap_return(ret, ProtocolReturnExecutionContext(self, ResponsibilityType.IN))
@@ -228,13 +230,16 @@ class ProtocolReturnExecutionContext(ExecutionContext):
 
         inner = self.wf.inner
         if isinstance(inner, WrappedFunction):
-            err = err.with_note(f"The return value of method '{WrappedFunction.find_original(self.wf).__name__}' does violate the {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}'.")
-            err = err.with_note(f"The annotation '{inner.checker_for('return').describe()}' is incompatible with the {self.wf.protocol.protocol_type()}'s annotation '{self.wf.checker_for('return').describe()}'\nwhen checking against the following value:")
+            err = err.with_note(
+                f"The return value of method '{WrappedFunction.find_original(self.wf).__name__}' does violate the {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}'.")
+            err = err.with_note(
+                f"The annotation '{inner.checker_for('return').describe()}' is incompatible with the {self.wf.protocol.protocol_type()}'s annotation '{self.wf.checker_for('return').describe()}'\nwhen checking against the following value:")
 
         previous_chain = UntypyTypeError(
             self.wf.me,
             f"{self.wf.protocol.proto.__name__}"
-        ).with_note(f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}' correctly.")
+        ).with_note(
+            f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}' correctly.")
 
         previous_chain = self.wf.ctx.wrap(previous_chain)
 
@@ -248,7 +253,7 @@ class ProtocolArgumentExecutionContext(ExecutionContext):
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
         (original_expected, _ind) = err.next_type_and_indicator()
-        err = ArgumentExecutionContext(self.wf, None,  self.arg_name).wrap(err)
+        err = ArgumentExecutionContext(self.wf, None, self.arg_name).wrap(err)
 
         responsable = WrappedFunction.find_location(self.wf)
 
@@ -260,13 +265,16 @@ class ProtocolArgumentExecutionContext(ExecutionContext):
             responsable=responsable
         ))
 
-        err = err.with_note(f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' violates the {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}'.")
-        err = err.with_note(f"The annotation '{original_expected}' is incompatible with the {self.wf.protocol.protocol_type()}'s annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against the following value:")
+        err = err.with_note(
+            f"The argument '{self.arg_name}' of method '{WrappedFunction.find_original(self.wf).__name__}' violates the {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}'.")
+        err = err.with_note(
+            f"The annotation '{original_expected}' is incompatible with the {self.wf.protocol.protocol_type()}'s annotation '{self.wf.checker_for(self.arg_name).describe()}'\nwhen checking against the following value:")
 
         previous_chain = UntypyTypeError(
             self.wf.me,
             f"{self.wf.protocol.proto.__name__}"
-        ).with_note(f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}' correctly.")
+        ).with_note(
+            f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}' correctly.")
 
         previous_chain = self.wf.ctx.wrap(previous_chain)
 

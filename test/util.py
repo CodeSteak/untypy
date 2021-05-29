@@ -1,5 +1,3 @@
-import inspect
-
 from untypy.error import UntypyTypeError, Frame, Location
 from untypy.impl import DefaultCreationContext
 from untypy.interfaces import ExecutionContext, WrappedFunction

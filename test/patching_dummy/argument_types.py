@@ -1,4 +1,4 @@
-from typing import Tuple, Iterator
+from typing import Tuple
 
 
 def kwargs(a: int, b: str, c: bool) -> Tuple[bool, int, str]:

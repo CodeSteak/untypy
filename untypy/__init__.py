@@ -1,12 +1,12 @@
 import inspect
 import sys
-from .patching import patch_module, patch_function, patch_class
-
 from types import ModuleType
 from typing import Optional, Any
 
+from .patching import patch_module, patch_function, patch_class
 
-def enable(recursive: bool = True, root : Optional[ModuleType] = None) -> None:
+
+def enable(recursive: bool = True, root: Optional[ModuleType] = None) -> None:
     if root is None:
         root = _find_calling_module()
     if root is None:
@@ -28,7 +28,8 @@ def _find_calling_module() -> Optional[ModuleType]:
                 return mod
     return None
 
-def patch(a : Any) -> Any:
+
+def patch(a: Any) -> Any:
     if inspect.isfunction(a):
         return patch_function(a)
     elif inspect.isclass(a):

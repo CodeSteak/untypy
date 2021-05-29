@@ -1,8 +1,9 @@
 import inspect
 from types import GenericAlias
+from typing import Any, Optional
+
 from untypy.error import UntypyTypeError, Frame, Location
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
-from typing import Any, Optional, Union
 
 
 class ListFactory(TypeCheckerFactory):
@@ -52,11 +53,11 @@ class ListExecutionContext(ExecutionContext):
         next_type, indicator = err.next_type_and_indicator()
 
         err = err.with_frame(Frame(
-                f"list[{next_type}]",
-                (" " * len("list[") + indicator),
-                None,
-                None
-            ))
+            f"list[{next_type}]",
+            (" " * len("list[") + indicator),
+            None,
+            None
+        ))
         return self.upper.wrap(err)
 
 
@@ -64,7 +65,7 @@ class ListCallerExecutionContext(ExecutionContext):
     stack: inspect.FrameInfo
     declared: Location
 
-    def __init__(self, stack: inspect.FrameInfo, declared : Location):
+    def __init__(self, stack: inspect.FrameInfo, declared: Location):
         self.stack = stack
         self.declared = declared
 
@@ -236,6 +237,7 @@ class TypedList(list):
 
     def __copy__(self):
         return self.inner.copy()
+
 
 class TypedListIterator:
     inner: TypedList

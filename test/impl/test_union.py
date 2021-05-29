@@ -1,11 +1,10 @@
 import unittest
-from typing import Tuple, Union, Callable, Optional
+from typing import Union, Callable
 
+from test.util import DummyExecutionContext, DummyDefaultCreationContext
 from untypy.error import UntypyTypeError, UntypyAttributeError
-from untypy.impl import DefaultCreationContext
 from untypy.impl.dummy_delayed import DummyDelayedType
 from untypy.impl.union import UnionFactory
-from test.util import DummyExecutionContext, DummyDefaultCreationContext
 
 
 class TestUnion(unittest.TestCase):
@@ -56,5 +55,5 @@ class TestUnion(unittest.TestCase):
 
         with self.assertRaises(UntypyAttributeError):
             checker = UnionFactory().create_from(Union[int, Callable[[int], str],
-                                                 Union[Callable[[str], str], list[int]]],
+                                                       Union[Callable[[str], str], list[int]]],
                                                  DummyDefaultCreationContext())

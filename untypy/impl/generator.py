@@ -1,9 +1,9 @@
-import inspect
-
-from untypy.error import UntypyTypeError, UntypyAttributeError, Location, Frame
-from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
-from typing import Any, Optional, Union, Generator
 import collections.abc
+import inspect
+from typing import Any, Optional, Generator
+
+from untypy.error import UntypyTypeError, UntypyAttributeError, Location
+from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from untypy.util import CompoundTypeExecutionContext, NoResponsabilityWrapper
 
 GeneratorType = type(Generator[None, None, None])
@@ -15,7 +15,8 @@ class GeneratorFactory(TypeCheckerFactory):
             if len(annotation.__args__) != 3:
                 raise ctx.wrap(UntypyAttributeError(f"Expected 3 type arguments for Generator."))
 
-            (yield_checker, send_checker, return_checker) = list(map(lambda a: ctx.find_checker(a), annotation.__args__))
+            (yield_checker, send_checker, return_checker) = list(
+                map(lambda a: ctx.find_checker(a), annotation.__args__))
 
             if yield_checker is None:
                 raise ctx.wrap(UntypyAttributeError(f"The Yield Annotation of the Generator could not be resolved."))
@@ -34,7 +35,7 @@ class GeneratorChecker(TypeChecker):
     send_checker: TypeChecker
     return_checker: TypeChecker
 
-    def __init__(self, yield_checker: TypeChecker, send_checker: TypeChecker, return_checker : TypeChecker):
+    def __init__(self, yield_checker: TypeChecker, send_checker: TypeChecker, return_checker: TypeChecker):
         self.yield_checker = yield_checker
         self.send_checker = send_checker
         self.return_checker = return_checker
@@ -85,7 +86,8 @@ class GeneratorChecker(TypeChecker):
 class TypedGeneratorYieldReturnContext(CompoundTypeExecutionContext):
     generator: Generator[Any, Any, Any]
 
-    def __init__(self, generator: Generator[Any, Any, Any], checker: GeneratorChecker, is_yield : bool, upper: ExecutionContext):
+    def __init__(self, generator: Generator[Any, Any, Any], checker: GeneratorChecker, is_yield: bool,
+                 upper: ExecutionContext):
         self.generator = generator
         # index in checkers list
         if is_yield:
@@ -105,7 +107,7 @@ class TypedGeneratorYieldReturnContext(CompoundTypeExecutionContext):
                     line_no=inspect.getsourcelines(self.generator.gi_frame)[1],
                     source_line="\n".join(inspect.getsourcelines(self.generator.gi_frame)[0]),
                 )
-        except OSError: # this call does not work all the time
+        except OSError:  # this call does not work all the time
             pass
         except TypeError:
             pass
@@ -115,7 +117,8 @@ class TypedGeneratorYieldReturnContext(CompoundTypeExecutionContext):
 class TypedGeneratorSendContext(CompoundTypeExecutionContext):
     def __init__(self, stack: inspect.FrameInfo, checker: GeneratorChecker, upper: ExecutionContext):
         self.stack = stack
-        super().__init__(NoResponsabilityWrapper(upper), [checker.yield_checker, checker.send_checker, checker.return_checker], 1)
+        super().__init__(NoResponsabilityWrapper(upper),
+                         [checker.yield_checker, checker.send_checker, checker.return_checker], 1)
 
     def name(self) -> str:
         return "Generator"
@@ -126,5 +129,3 @@ class TypedGeneratorSendContext(CompoundTypeExecutionContext):
             line_no=self.stack.lineno,
             source_line=self.stack.code_context[0]
         )
-
-

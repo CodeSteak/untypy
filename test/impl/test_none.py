@@ -1,9 +1,8 @@
 import unittest
 
-from untypy.error import UntypyTypeError
-from untypy.impl import DefaultCreationContext
-from untypy.impl.none import NoneFactory
 from test.util import DummyExecutionContext, DummyDefaultCreationContext
+from untypy.error import UntypyTypeError
+from untypy.impl.none import NoneFactory
 
 
 class TestNone(unittest.TestCase):

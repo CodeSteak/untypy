@@ -1,5 +1,5 @@
 import unittest
-from typing import Generator, Iterator
+from typing import Iterator
 
 from test.util import DummyDefaultCreationContext, DummyExecutionContext
 from untypy.error import UntypyTypeError

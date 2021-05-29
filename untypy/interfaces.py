@@ -54,7 +54,7 @@ class WrappedFunction:
     def get_original(self):
         raise NotImplementedError
 
-    def wrap_arguments(self, ctxprv : WrappedFunctionContextProvider, args, kwargs):
+    def wrap_arguments(self, ctxprv: WrappedFunctionContextProvider, args, kwargs):
         raise NotImplementedError
 
     def wrap_return(self, ret, ctx: ExecutionContext):
@@ -63,7 +63,7 @@ class WrappedFunction:
     def describe(self) -> str:
         raise NotImplementedError
 
-    def checker_for(self, name : str) -> TypeChecker:
+    def checker_for(self, name: str) -> TypeChecker:
         raise NotImplementedError
 
     @staticmethod

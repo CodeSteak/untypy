@@ -1,13 +1,12 @@
 import inspect
+from collections.abc import Callable as AbcCallable
+from typing import Any, Optional, Callable, Union, Tuple
 
 from untypy.error import UntypyTypeError, UntypyAttributeError, Frame, Location
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext, WrappedFunction, \
     WrappedFunctionContextProvider
-from typing import Any, Optional, Callable, Union, Tuple
-from collections.abc import Callable as AbcCallable
 
 # These Types are prefixed with an underscore...
-from untypy.util import NoResponsabilityWrapper
 
 CallableTypeOne = type(Callable[[], None])
 CallableTypeTwo = type(AbcCallable[[], None])
@@ -186,4 +185,3 @@ class TypedCallableArgumentExecutionContext(ExecutionContext):
         err = err.with_frame(frame)
         err = err.with_inverted_responsibility_type()
         return self.upper.wrap(err)
-

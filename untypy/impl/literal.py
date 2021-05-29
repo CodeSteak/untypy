@@ -1,6 +1,7 @@
+from typing import Any, Optional, Literal
+
 from untypy.error import UntypyTypeError
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
-from typing import Any, Optional, Literal
 
 LiteralType = type(Literal[42])
 

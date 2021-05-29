@@ -1,11 +1,10 @@
 import unittest
 from typing import Callable
 
-from untypy.error import UntypyTypeError
-from untypy.impl.callable import CallableChecker, CallableFactory
-from untypy.impl.dummy_delayed import DummyDelayedType
 from test.util import DummyExecutionContext, DummyDefaultCreationContext
-from untypy.impl import DefaultCreationContext
+from untypy.error import UntypyTypeError
+from untypy.impl.callable import CallableFactory
+from untypy.impl.dummy_delayed import DummyDelayedType
 
 
 class TestCallable(unittest.TestCase):
@@ -62,7 +61,8 @@ class TestCallable(unittest.TestCase):
         self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_error_delayed(self):
-        self.checker = CallableFactory().create_from(Callable[[int, int], DummyDelayedType], DummyDefaultCreationContext())
+        self.checker = CallableFactory().create_from(Callable[[int, int], DummyDelayedType],
+                                                     DummyDefaultCreationContext())
         fn = self.checker.check_and_wrap(lambda x, y: x // y, DummyExecutionContext())
         res = fn(1, 2)
 

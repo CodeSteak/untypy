@@ -2,7 +2,7 @@ class IndicatorStr:
     ty: str
     indicator: str
 
-    def __init__(self, ty : str, indicator : str = ""):
+    def __init__(self, ty: str, indicator: str = ""):
         while len(indicator) < len(ty):
             indicator += " "
 

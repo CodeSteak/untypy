@@ -1,22 +1,19 @@
-from types import GenericAlias
 from typing import Any, Optional
 
 from untypy.interfaces import CreationContext, TypeChecker
 from .any import AnyFactory
-
 from .callable import CallableFactory
+from .dummy_delayed import DummyDelayedFactory
+from .generator import GeneratorFactory
+from .iterator import IteratorFactory
 from .list import ListFactory
 from .literal import LiteralFactory
 from .none import NoneFactory
+from .optional import OptionalFactory
 from .protocol import ProtocolFactory
 from .simple import SimpleFactory
 from .tuple import TupleFactory
 from .union import UnionFactory
-from .dummy_delayed import DummyDelayedFactory
-from .optional import OptionalFactory
-from .generator import GeneratorFactory
-from .iterator import IteratorFactory
-
 # More Specific Ones First
 from ..error import Location, UntypyAttributeError
 
@@ -40,7 +37,7 @@ _FactoryList = [
 
 class DefaultCreationContext(CreationContext):
 
-    def __init__(self, declared_location : Location):
+    def __init__(self, declared_location: Location):
         self.declared = declared_location
 
     def declared_location(self) -> Location:

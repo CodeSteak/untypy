@@ -1,11 +1,10 @@
 import unittest
-from typing import Union, Optional
+from typing import Optional
 
+from test.util import DummyExecutionContext, DummyDefaultCreationContext
 from untypy.error import UntypyTypeError
-from untypy.impl import DefaultCreationContext
 from untypy.impl.dummy_delayed import DummyDelayedType
 from untypy.impl.optional import OptionalFactory
-from test.util import DummyExecutionContext, DummyDefaultCreationContext
 
 
 class TestOptional(unittest.TestCase):

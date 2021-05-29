@@ -1,6 +1,7 @@
 import unittest
+
+from test.util import DummyExecutionContext
 from untypy.impl.any import AnyChecker
-from test.util import DummyExecutionContext, DummyDefaultCreationContext
 
 
 class TestAny(unittest.TestCase):

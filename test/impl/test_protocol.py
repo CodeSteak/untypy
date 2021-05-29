@@ -1,5 +1,5 @@
 import unittest
-from typing import Protocol, Callable, Union
+from typing import Protocol, Union
 
 import untypy
 from test.util import DummyDefaultCreationContext, DummyExecutionContext, location_of
@@ -11,8 +11,10 @@ from untypy.impl.union import UnionFactory
 class A:
     pass
 
+
 class ParrentB:
     pass
+
 
 class B(ParrentB):
     pass
@@ -96,6 +98,7 @@ class TestProtocol(unittest.TestCase):
         class Concrete:
             def meth(self, b: A):
                 pass
+
         untypy.patch(Concrete)
 
         instance = self.checker_arg.check_and_wrap(Concrete(), DummyExecutionContext())
@@ -114,6 +117,7 @@ class TestProtocol(unittest.TestCase):
         class Concrete:
             def meth(self) -> A:
                 return A()
+
         untypy.patch(Concrete)
 
         instance = self.checker_return.check_and_wrap(Concrete(), DummyExecutionContext())
@@ -132,6 +136,7 @@ class TestProtocol(unittest.TestCase):
         class Concrete:
             def meth(self) -> B:
                 return B()
+
         untypy.patch(Concrete)
         instance = self.checker_return.check_and_wrap(Concrete(), DummyExecutionContext())
 
@@ -153,9 +158,9 @@ class TestProtocol(unittest.TestCase):
         untypy.patch(U2)
 
         # when wrapping order matters
-        UnionFactory()\
-            .create_from(Union[U1, U2], DummyDefaultCreationContext())\
-            .check_and_wrap(U1(), DummyExecutionContext())\
+        UnionFactory() \
+            .create_from(Union[U1, U2], DummyDefaultCreationContext()) \
+            .check_and_wrap(U1(), DummyExecutionContext()) \
             .meth()
         UnionFactory() \
             .create_from(Union[U1, U2], DummyDefaultCreationContext()) \

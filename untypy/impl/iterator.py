@@ -1,11 +1,10 @@
-import inspect
-
-from untypy.error import UntypyTypeError, UntypyAttributeError, Location, Frame
-from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
-from typing import Any, Optional, Iterator, Generator
 import collections.abc
+import inspect
+from typing import Any, Optional, Iterator
 
-from untypy.util import CompoundTypeExecutionContext, NoResponsabilityWrapper
+from untypy.error import UntypyTypeError, UntypyAttributeError, Location
+from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
+from untypy.util import CompoundTypeExecutionContext
 
 IteratorType = type(Iterator[int])
 
@@ -71,7 +70,7 @@ class TypedIteratorExecutionContext(CompoundTypeExecutionContext):
                     line_no=inspect.getsourcelines(self.iter.gi_frame)[1],
                     source_line="\n".join(inspect.getsourcelines(self.iter.gi_frame)[0]),
                 )
-        except OSError: # this call does not work all the time
+        except OSError:  # this call does not work all the time
             pass
         except TypeError:
             pass

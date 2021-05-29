@@ -2,28 +2,33 @@ import unittest
 from typing import Union
 
 import untypy
+from test.util import DummyExecutionContext, DummyDefaultCreationContext
 from untypy.error import UntypyTypeError, UntypyAttributeError
 from untypy.impl.simple import SimpleFactory
 from untypy.impl.union import UnionFactory
-from test.util import DummyExecutionContext, DummyDefaultCreationContext
 
 
 class A:
     pass
 
+
 class ChildOfA(A):
     pass
 
+
 class B:
     pass
+
 
 class SomeParent:
     def meth(self) -> str:
         return "Hello"
 
+
 class ChildOfSomeParent(SomeParent):
-    def meth(self) -> int: # Signature does not match.
+    def meth(self) -> int:  # Signature does not match.
         return 42
+
 
 class TestSimple(unittest.TestCase):
 

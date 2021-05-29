@@ -1,6 +1,6 @@
 from __future__ import annotations
+
 from enum import Enum
-import inspect
 from typing import Any, Optional, Tuple
 
 
@@ -78,13 +78,14 @@ class UntypyTypeError(TypeError):
     expected: str
     expected_indicator: str
     frames: list[Frame]
-    notes : list[str]
+    notes: list[str]
     previous_chain: Optional[UntypyTypeError]
     responsibility_type: ResponsibilityType
 
     def __init__(self, given: Any, expected: str, expected_indicator: Optional[str] = None, frames: list[Frame] = [],
-                 notes : list[str] = [],
-                 previous_chain: Optional[UntypyTypeError] = None, responsibility_type : ResponsibilityType = ResponsibilityType.IN):
+                 notes: list[str] = [],
+                 previous_chain: Optional[UntypyTypeError] = None,
+                 responsibility_type: ResponsibilityType = ResponsibilityType.IN):
 
         self.responsibility_type = responsibility_type
         self.given = given
@@ -100,7 +101,7 @@ class UntypyTypeError(TypeError):
         self.notes = notes.copy()
         self.previous_chain = previous_chain
 
-        super().__init__('\n'+self.__str__())
+        super().__init__('\n' + self.__str__())
 
     def next_type_and_indicator(self) -> Tuple[str, str]:
         if len(self.frames) >= 1:
@@ -143,7 +144,8 @@ class UntypyTypeError(TypeError):
         responsable_locs = []
 
         for f in self.frames:
-            if f.responsable is not None and f.responsibility_type is ResponsibilityType.IN and str(f.responsable) not in responsable_locs:
+            if f.responsable is not None and f.responsibility_type is ResponsibilityType.IN and str(
+                    f.responsable) not in responsable_locs:
                 responsable_locs.append(str(f.responsable))
             if f.declared is not None and str(f.declared) not in declared_locs:
                 declared_locs.append(str(f.declared))
@@ -169,16 +171,16 @@ class UntypyTypeError(TypeError):
 
         given = repr(self.given)
         return (f"{previous_chain}\n{notes}given: {given}\n"
-            f"expected: {self.expected}\n"
-            f"          {self.expected_indicator}\n\n"
-            f"{inside}"
-            f"declared at: \n{declared}\n\n"
-            f"caused by: \n{cause}")
+                f"expected: {self.expected}\n"
+                f"          {self.expected_indicator}\n\n"
+                f"{inside}"
+                f"declared at: \n{declared}\n\n"
+                f"caused by: \n{cause}")
 
 
 class UntypyAttributeError(AttributeError):
 
-    def __init__(self, message : str, locations : list[Location] = []):
+    def __init__(self, message: str, locations: list[Location] = []):
         self.message = message
         self.locations = locations.copy()
 

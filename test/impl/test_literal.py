@@ -1,10 +1,9 @@
 import unittest
 from typing import Literal
 
-from untypy.error import UntypyTypeError
-from untypy.impl import DefaultCreationContext
-from untypy.impl.literal import LiteralChecker, LiteralFactory
 from test.util import DummyExecutionContext, DummyDefaultCreationContext
+from untypy.error import UntypyTypeError
+from untypy.impl.literal import LiteralFactory
 
 
 class TestLiteral(unittest.TestCase):

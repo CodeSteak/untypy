@@ -1,12 +1,11 @@
 import inspect
-
 from collections import namedtuple
 from types import ModuleType, FunctionType
-from typing import Callable, Dict, Tuple, Protocol
-from untypy.impl import DefaultCreationContext
+from typing import Callable, Dict
 
-from untypy.error import UntypyAttributeError, UntypyTypeError, Frame, Location
-from untypy.impl.any import AnyChecker, SelfChecker
+from untypy.error import UntypyAttributeError, Location
+from untypy.impl import DefaultCreationContext
+from untypy.impl.any import SelfChecker
 from untypy.interfaces import CreationContext, TypeChecker, ExecutionContext, WrappedFunctionContextProvider
 from untypy.util import WrappedFunction, ArgumentExecutionContext, ReturnExecutionContext
 
@@ -15,6 +14,7 @@ DefaultConfig = Config(verbose=True)
 not_patching = ['__class__']
 
 GlobalPatchedList = set()
+
 
 def patch_module(mod: ModuleType, cfg: Config = DefaultConfig) -> None:
     _patch_module_or_class(mod, cfg)
@@ -87,13 +87,14 @@ class TypedFunctionBuilder(WrappedFunction):
         for key in checked_keys:
             annotation = self.signature.parameters[key].annotation
             if annotation is inspect.Parameter.empty:
-                raise ctx.wrap(UntypyAttributeError(f"\Missing Annotation for argument '{key}' of function {inner.__name__}\n"
-                                           "Partial Annotation are not supported."))
+                raise ctx.wrap(
+                    UntypyAttributeError(f"\Missing Annotation for argument '{key}' of function {inner.__name__}\n"
+                                         "Partial Annotation are not supported."))
 
             checker = ctx.find_checker(annotation)
             if checker is None:
                 raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {annotation}\n"
-                                           f"\tin argument '{key}'"))
+                                                    f"\tin argument '{key}'"))
             else:
                 checkers[key] = checker
 
@@ -104,7 +105,7 @@ class TypedFunctionBuilder(WrappedFunction):
             return_checker = ctx.find_checker(annotation)
             if return_checker is None:
                 raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {annotation}\n"
-                                           f"\tin return"))
+                                                    f"\tin return"))
 
             checkers['return'] = return_checker
 
@@ -136,7 +137,7 @@ class TypedFunctionBuilder(WrappedFunction):
         setattr(w, '__wf', self)
         return w
 
-    def wrap_arguments(self, ctxprv : WrappedFunctionContextProvider, args, kwargs):
+    def wrap_arguments(self, ctxprv: WrappedFunctionContextProvider, args, kwargs):
         bindings = self.signature.bind(*args, **kwargs)
         bindings.apply_defaults()
         for name in bindings.arguments:
@@ -155,5 +156,5 @@ class TypedFunctionBuilder(WrappedFunction):
     def get_original(self):
         return self.inner
 
-    def checker_for(self, name : str) -> TypeChecker:
+    def checker_for(self, name: str) -> TypeChecker:
         return self.checkers[name]
