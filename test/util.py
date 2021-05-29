@@ -1,3 +1,5 @@
+from typing import TypeVar, Any
+
 from untypy.error import UntypyTypeError, Frame, Location
 from untypy.impl import DefaultCreationContext
 from untypy.interfaces import ExecutionContext, WrappedFunction
@@ -21,8 +23,8 @@ class DummyExecutionContext(ExecutionContext):
 
 class DummyDefaultCreationContext(DefaultCreationContext):
 
-    def __init__(self):
-        super().__init__(Location(
+    def __init__(self, typevars: dict[TypeVar, Any] = dict()):
+        super().__init__(typevars.copy(), Location(
             file="dummy",
             line_no=0,
             source_line="dummy"

@@ -1,10 +1,11 @@
-from typing import Any, Optional
+from typing import Any, Optional, TypeVar
 
 from untypy.interfaces import CreationContext, TypeChecker
 from .any import AnyFactory
 from .callable import CallableFactory
 from .dummy_delayed import DummyDelayedFactory
 from .generator import GeneratorFactory
+from .generic import GenericFactory
 from .iterator import IteratorFactory
 from .list import ListFactory
 from .literal import LiteralFactory
@@ -20,6 +21,7 @@ from ..error import Location, UntypyAttributeError
 _FactoryList = [
     AnyFactory(),
     NoneFactory(),
+    GenericFactory(),
     CallableFactory(),
     ListFactory(),
     LiteralFactory(),
@@ -37,7 +39,8 @@ _FactoryList = [
 
 class DefaultCreationContext(CreationContext):
 
-    def __init__(self, declared_location: Location):
+    def __init__(self, typevars: dict[TypeVar, Any], declared_location: Location):
+        self.typevars = typevars
         self.declared = declared_location
 
     def declared_location(self) -> Location:
@@ -52,3 +55,15 @@ class DefaultCreationContext(CreationContext):
 
     def wrap(self, err: UntypyAttributeError) -> UntypyAttributeError:
         return err.with_location(self.declared)
+
+    def resolve_typevar(self, var: TypeVar) -> (bool, Any):
+        # Not result may be None
+        if var in self.typevars:
+            return True, self.typevars[var]
+        else:
+            return False, None
+
+    def with_typevars(self, typevars: dict[TypeVar, Any]) -> CreationContext:
+        tv = self.typevars.copy()
+        tv.update(typevars)
+        return DefaultCreationContext(tv, self.declared)

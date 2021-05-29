@@ -55,11 +55,13 @@ def patch_function(fn: FunctionType, cfg: Config = DefaultConfig) -> Callable:
         if cfg.verbose:
             print(f"Patching Function: {fn.__name__}")
 
-        return TypedFunctionBuilder(fn, DefaultCreationContext(Location(
-            file=inspect.getfile(fn),
-            line_no=inspect.getsourcelines(fn)[1],
-            source_line="".join(inspect.getsourcelines(fn)[0]),
-        ))).build()
+        return TypedFunctionBuilder(fn, DefaultCreationContext(
+            typevars=dict(),
+            declared_location=Location(
+                file=inspect.getfile(fn),
+                line_no=inspect.getsourcelines(fn)[1],
+                source_line="".join(inspect.getsourcelines(fn)[0]),
+            ))).build()
     else:
         return fn
 

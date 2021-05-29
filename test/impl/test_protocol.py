@@ -1,10 +1,10 @@
 import unittest
-from typing import Protocol, Union
+from typing import Protocol, Union, TypeVar, Generic
 
 import untypy
 from test.util import DummyDefaultCreationContext, DummyExecutionContext, location_of
 from untypy.error import UntypyTypeError
-from untypy.impl import ProtocolFactory
+from untypy.impl import ProtocolFactory, GenericFactory
 from untypy.impl.union import UnionFactory
 
 
@@ -34,9 +34,14 @@ untypy.patch(ProtoReturnB)
 untypy.patch(ProtoReceiveB)
 
 
-class TestProtocol(unittest.TestCase):
+class TestProtocolTestCommon(unittest.TestCase):
 
     def setUp(self) -> None:
+        self.sig_b = "B"
+        self.ProtoReturnB = ProtoReturnB
+        self.ProtoReceiveB = ProtoReceiveB
+        self.ProtoReturnBName = "ProtoReturnB(Protocol)"
+        self.ProtoReceiveBName = "ProtoReceiveB(Protocol)"
         self.checker_return = ProtocolFactory().create_from(ProtoReturnB, DummyDefaultCreationContext())
         self.checker_arg = ProtocolFactory().create_from(ProtoReceiveB, DummyDefaultCreationContext())
 
@@ -51,8 +56,8 @@ class TestProtocol(unittest.TestCase):
         (t, i) = cm.exception.next_type_and_indicator()
         i = i.rstrip()
 
-        self.assertEqual(t, "ProtoReturnB(Protocol)")
-        self.assertEqual(i, "^^^^^^^^^^^^^^^^^^^^^^")
+        self.assertEqual(t, self.ProtoReturnBName)
+        self.assertEqual(i, "^" * len(self.ProtoReturnBName))
         self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_receiving_wrong_arguments(self):
@@ -67,13 +72,11 @@ class TestProtocol(unittest.TestCase):
             instance.meth(A())
 
         (t, i) = cm.exception.next_type_and_indicator()
-        i = i.rstrip()
 
-        self.assertEqual(t, "meth(self: Self, b: B) -> None")
-        self.assertEqual(i, "                    ^")
+        self.assertEqual(t, f"meth(self: Self, b: {self.sig_b}) -> None")
         self.assertEqual(cm.exception.last_responsable().file, __file__)
 
-        self.assertEqual(cm.exception.last_declared(), location_of(ProtoReceiveB.meth))
+        self.assertEqual(cm.exception.last_declared(), location_of(self.ProtoReceiveB.meth))
 
     def test_return_wrong_arguments(self):
         class Concrete:
@@ -87,10 +90,8 @@ class TestProtocol(unittest.TestCase):
             instance.meth()
 
         (t, i) = cm.exception.next_type_and_indicator()
-        i = i.rstrip()
 
-        self.assertEqual(t, "meth(self: Self) -> B")
-        self.assertEqual(i, "                    ^")
+        self.assertEqual(t, f"meth(self: Self) -> B")
         self.assertEqual(cm.exception.last_responsable().file, __file__)
         self.assertEqual(cm.exception.last_declared(), location_of(Concrete.meth))
 
@@ -111,7 +112,7 @@ class TestProtocol(unittest.TestCase):
         self.assertEqual(t, "meth(self: Self, b: A) -> None")
         self.assertEqual(i, "                    ^")
         self.assertEqual(cm.exception.last_responsable(), location_of(Concrete.meth))
-        self.assertEqual(cm.exception.last_declared(), location_of(ProtoReceiveB.meth))
+        self.assertEqual(cm.exception.last_declared(), location_of(self.ProtoReceiveB.meth))
 
     def test_concrete_wrong_return_signature(self):
         class Concrete:
@@ -127,20 +128,36 @@ class TestProtocol(unittest.TestCase):
         (t, i) = cm.exception.next_type_and_indicator()
         i = i.rstrip()
 
-        self.assertEqual(t, "meth(self: Self) -> B")
-        self.assertEqual(i, "                    ^")
+        self.assertEqual(t, f"meth(self: Self) -> {self.sig_b}")
         self.assertEqual(cm.exception.last_responsable(), location_of(Concrete.meth))
-        self.assertEqual(cm.exception.last_declared(), location_of(ProtoReturnB.meth))
+        self.assertEqual(cm.exception.last_declared(), location_of(self.ProtoReturnB.meth))
 
-    def test_not_patching_if_signature_eq(self):
-        class Concrete:
-            def meth(self) -> B:
-                return B()
 
-        untypy.patch(Concrete)
-        instance = self.checker_return.check_and_wrap(Concrete(), DummyExecutionContext())
+class TestProtocolGenerics(TestProtocolTestCommon):
+    def setUp(self) -> None:
+        T = TypeVar("T")
 
-        self.assertEqual(type(instance), Concrete)
+        class ProtoReturnGeneric(Generic[T]):
+            def meth(self) -> T:
+                raise NotImplementedError
+
+        class ProtoReceiveGeneric(Generic[T]):
+            def meth(self, b: T) -> None:
+                raise NotImplementedError
+
+        untypy.patch(ProtoReturnGeneric)
+        untypy.patch(ProtoReceiveGeneric)
+
+        self.sig_b = "~T=B"
+        self.ProtoReturnB = ProtoReturnGeneric
+        self.ProtoReceiveB = ProtoReceiveGeneric
+        self.ProtoReturnBName = "ProtoReturnGeneric(Generic)"
+        self.ProtoReceiveBName = "ProtoReceiveGeneric(Generic)"
+        self.checker_return = GenericFactory().create_from(ProtoReturnGeneric[B], DummyDefaultCreationContext())
+        self.checker_arg = GenericFactory().create_from(ProtoReceiveGeneric[B], DummyDefaultCreationContext())
+
+
+class TestProtocolSpecific(unittest.TestCase):
 
     def test_union_protocols(self):
         class U1:
@@ -174,3 +191,14 @@ class TestProtocol(unittest.TestCase):
             .create_from(Union[U2, U1], DummyDefaultCreationContext()) \
             .check_and_wrap(U2(), DummyExecutionContext()) \
             .meth()
+
+    def test_not_patching_if_signature_eq(self):
+        class Concrete:
+            def meth(self) -> B:
+                return B()
+
+        untypy.patch(Concrete)
+        instance = ProtocolFactory().create_from(ProtoReturnB, DummyDefaultCreationContext()).check_and_wrap(Concrete(),
+                                                                                                             DummyExecutionContext())
+
+        self.assertEqual(type(instance), Concrete)

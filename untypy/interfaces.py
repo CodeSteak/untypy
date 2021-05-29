@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Optional, Any, Callable
+from typing import Optional, Any, Callable, TypeVar
 
 from untypy.error import UntypyTypeError, Location, UntypyAttributeError
 
@@ -14,6 +14,12 @@ class CreationContext:
         raise NotImplementedError
 
     def wrap(self, err: UntypyAttributeError) -> UntypyAttributeError:
+        raise NotImplementedError
+
+    def resolve_typevar(self, var: TypeVar) -> (bool, Any):
+        raise NotImplementedError
+
+    def with_typevars(self, typevars: dict[TypeVar, Any]) -> CreationContext:
         raise NotImplementedError
 
 

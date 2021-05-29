@@ -1,5 +1,5 @@
 import inspect
-from typing import Protocol, Any, Optional, Callable, Union
+from typing import Protocol, Any, Optional, Callable, Union, TypeVar
 
 from untypy.error import UntypyTypeError, UntypyAttributeError, Frame, Location, ResponsibilityType
 from untypy.impl.any import SelfChecker
@@ -17,7 +17,31 @@ class ProtocolFactory(TypeCheckerFactory):
             return None
 
 
-def get_proto_members(proto: type, ctx: CreationContext) -> dict[str, (inspect.Signature, dict[str, TypeChecker])]:
+def _find_bound_typevars(clas: type) -> (type, dict[TypeVar, Any]):
+    if not hasattr(clas, '__args__') or not hasattr(clas, '__origin__'):
+        return (clas, dict())
+    if not hasattr(clas.__origin__, '__parameters__'):
+        return (clas, dict())
+
+    keys = clas.__origin__.__parameters__
+    values = clas.__args__
+
+    if len(keys) != len(values):
+        raise UntypyAttributeError(f"Some unbound Parameters in {clas.__name__}. "
+                                   f"keys={keys} do not match values={values}.",
+                                   Location(
+                                       file=inspect.getfile(clas),
+                                       line_no=inspect.getsourcelines(clas)[1],
+                                       source_line="".join(inspect.getsourcelines(clas)[0])));
+    return (clas.__origin__, dict(zip(keys, values)))
+
+
+def get_proto_members(proto: type, ctx: CreationContext) -> (
+type, dict[str, (inspect.Signature, dict[str, TypeChecker])]):
+    (nproto, typevars) = _find_bound_typevars(proto)
+    ctx = ctx.with_typevars(typevars)
+    proto = nproto
+
     blacklist = ['__subclasshook__', '__init__']
     member_dict = {}
     for [name, member] in inspect.getmembers(proto):
@@ -52,13 +76,13 @@ def get_proto_members(proto: type, ctx: CreationContext) -> dict[str, (inspect.S
                                                     f"in Protocol {proto.__name__}.\n"))
             checkers['return'] = return_checker
             member_dict[name] = (signature, checkers)
-    return member_dict
+    return (nproto, member_dict)
 
 
 class ProtocolChecker(TypeChecker):
     def __init__(self, proto: type, ctx: CreationContext):
-        members = get_proto_members(proto, ctx)
-        self.proto = proto
+        (nproto, members) = get_proto_members(proto, ctx)
+        self.proto = nproto
         self.members = members
 
     def may_change_identity(self) -> bool:
