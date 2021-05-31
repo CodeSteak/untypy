@@ -82,7 +82,7 @@ class TypedFunctionBuilder(WrappedFunction):
         checked_keys = list(self.signature.parameters)
 
         # Remove self and cls from checking
-        if checked_keys[0] in self.special_args:
+        if len(checked_keys) > 0 and checked_keys[0] in self.special_args:
             checkers[checked_keys[0]] = SelfChecker()
             checked_keys = checked_keys[1:]
 
