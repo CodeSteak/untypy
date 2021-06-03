@@ -1,4 +1,5 @@
 import inspect
+import typing
 from collections import namedtuple
 from types import ModuleType, FunctionType
 from typing import Callable, Dict
@@ -78,6 +79,9 @@ class TypedFunctionBuilder(WrappedFunction):
         self.inner = inner
         self.signature = inspect.signature(inner)
 
+        # SEE: https://www.python.org/dev/peps/pep-0563/#id7
+        annotations = typing.get_type_hints(inner)
+
         checkers = {}
         checked_keys = list(self.signature.parameters)
 
@@ -87,12 +91,11 @@ class TypedFunctionBuilder(WrappedFunction):
             checked_keys = checked_keys[1:]
 
         for key in checked_keys:
-            annotation = self.signature.parameters[key].annotation
-            if annotation is inspect.Parameter.empty:
+            if self.signature.parameters[key].annotation is inspect.Parameter.empty:
                 raise ctx.wrap(
                     UntypyAttributeError(f"\Missing Annotation for argument '{key}' of function {inner.__name__}\n"
                                          "Partial Annotation are not supported."))
-
+            annotation = annotations[key]
             checker = ctx.find_checker(annotation)
             if checker is None:
                 raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {annotation}\n"
@@ -103,7 +106,7 @@ class TypedFunctionBuilder(WrappedFunction):
         if inner.__name__ in self.method_name_ignore_return:
             checkers['return'] = SelfChecker()
         else:
-            annotation = self.signature.return_annotation
+            annotation = annotations['return']
             return_checker = ctx.find_checker(annotation)
             if return_checker is None:
                 raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {annotation}\n"

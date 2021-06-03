@@ -266,7 +266,6 @@ class ProtocolReturnExecutionContext(ExecutionContext):
             f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}' correctly.")
 
         previous_chain = self.wf.ctx.wrap(previous_chain)
-
         return err.with_previous_chain(previous_chain)
 
 
@@ -301,5 +300,6 @@ class ProtocolArgumentExecutionContext(ExecutionContext):
             f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}' correctly.")
 
         previous_chain = self.wf.ctx.wrap(previous_chain)
+        # err = err.with_inverted_responsibility_type()
 
         return err.with_previous_chain(previous_chain)
