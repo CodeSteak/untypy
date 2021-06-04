@@ -21,17 +21,15 @@ class B(ParrentB):
 
 
 class ProtoReturnB(Protocol):
+    @untypy.patch
     def meth(self) -> B:
         raise NotImplementedError
 
 
 class ProtoReceiveB(Protocol):
+    @untypy.patch
     def meth(self, b: B) -> None:
         raise NotImplementedError
-
-
-untypy.patch(ProtoReturnB)
-untypy.patch(ProtoReceiveB)
 
 
 class TestProtocolTestCommon(unittest.TestCase):
@@ -62,10 +60,9 @@ class TestProtocolTestCommon(unittest.TestCase):
 
     def test_receiving_wrong_arguments(self):
         class Concrete:
+            @untypy.patch
             def meth(self, b: ParrentB) -> None:
                 pass
-
-        untypy.patch(Concrete)
 
         instance = self.checker_arg.check_and_wrap(Concrete(), DummyExecutionContext())
         with self.assertRaises(UntypyTypeError) as cm:
@@ -80,10 +77,9 @@ class TestProtocolTestCommon(unittest.TestCase):
 
     def test_return_wrong_arguments(self):
         class Concrete:
+            @untypy.patch
             def meth(self) -> B:
                 return A()
-
-        untypy.patch(Concrete)
 
         instance = self.checker_return.check_and_wrap(Concrete(), DummyExecutionContext())
         with self.assertRaises(UntypyTypeError) as cm:
@@ -97,10 +93,9 @@ class TestProtocolTestCommon(unittest.TestCase):
 
     def test_concrete_wrong_argument_signature(self):
         class Concrete:
+            @untypy.patch
             def meth(self, b: A) -> NoReturn:
                 pass
-
-        untypy.patch(Concrete)
 
         instance = self.checker_arg.check_and_wrap(Concrete(), DummyExecutionContext())
         with self.assertRaises(UntypyTypeError) as cm:
@@ -116,10 +111,9 @@ class TestProtocolTestCommon(unittest.TestCase):
 
     def test_concrete_wrong_return_signature(self):
         class Concrete:
+            @untypy.patch
             def meth(self) -> A:
                 return A()
-
-        untypy.patch(Concrete)
 
         instance = self.checker_return.check_and_wrap(Concrete(), DummyExecutionContext())
         with self.assertRaises(UntypyTypeError) as cm:
@@ -138,15 +132,14 @@ class TestProtocolGenerics(TestProtocolTestCommon):
         T = TypeVar("T")
 
         class ProtoReturnGeneric(Generic[T]):
+            @untypy.patch
             def meth(self) -> T:
                 raise NotImplementedError
 
         class ProtoReceiveGeneric(Generic[T]):
+            @untypy.patch
             def meth(self, b: T) -> None:
                 raise NotImplementedError
-
-        untypy.patch(ProtoReturnGeneric)
-        untypy.patch(ProtoReceiveGeneric)
 
         self.sig_b = "~T=B"
         self.ProtoReturnB = ProtoReturnGeneric
@@ -161,18 +154,18 @@ class TestProtocolSpecific(unittest.TestCase):
 
     def test_union_protocols(self):
         class U1:
+            @untypy.patch
             def meth(self) -> str:
                 return "s"
 
         class U2:
+            @untypy.patch
             def meth(self) -> int:
                 return 42
 
+            @untypy.patch
             def meth2(self) -> int:
                 return 42
-
-        untypy.patch(U1)
-        untypy.patch(U2)
 
         # when wrapping order matters
         UnionFactory() \
@@ -194,10 +187,10 @@ class TestProtocolSpecific(unittest.TestCase):
 
     def test_not_patching_if_signature_eq(self):
         class Concrete:
+            @untypy.patch
             def meth(self) -> B:
                 return B()
 
-        untypy.patch(Concrete)
         instance = ProtocolFactory().create_from(ProtoReturnB, DummyDefaultCreationContext()).check_and_wrap(Concrete(),
                                                                                                              DummyExecutionContext())
 

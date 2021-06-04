@@ -21,11 +21,13 @@ class B:
 
 
 class SomeParent:
+    @untypy.patch
     def meth(self) -> str:
         return "Hello"
 
 
 class ChildOfSomeParent(SomeParent):
+    @untypy.patch
     def meth(self) -> int:  # Signature does not match.
         return 42
 
@@ -59,9 +61,6 @@ class TestSimple(unittest.TestCase):
         self.assertEqual(cm.exception.last_responsable().file, "dummy")
 
     def test_wrap_inheritance(self):
-        untypy.patch(SomeParent)
-        untypy.patch(ChildOfSomeParent)
-
         checker = SimpleFactory().create_from(SomeParent, DummyDefaultCreationContext())
 
         res = checker.check_and_wrap(ChildOfSomeParent(), DummyExecutionContext())
