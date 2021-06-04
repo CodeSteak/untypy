@@ -106,6 +106,11 @@ class TypedFunctionBuilder(WrappedFunction):
         if inner.__name__ in self.method_name_ignore_return:
             checkers['return'] = SelfChecker()
         else:
+            if not 'return' in annotations:
+                raise ctx.wrap(
+                    UntypyAttributeError(f"\Missing Annotation for return value of function {inner.__name__}\n"
+                                         "Partial Annotation are not supported. Use 'None' or 'NoReturn'"
+                                         "for specifying no return value."))
             annotation = annotations['return']
             return_checker = ctx.find_checker(annotation)
             if return_checker is None:
