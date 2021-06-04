@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, NoReturn
 
 from untypy.error import UntypyTypeError
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
@@ -7,7 +7,7 @@ from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, 
 class NoneFactory(TypeCheckerFactory):
 
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
-        if annotation is None or annotation is type(None):
+        if annotation is None or annotation is type(None) or annotation == NoReturn:
             return NoneChecker()
         else:
             return None
