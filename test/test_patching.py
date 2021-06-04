@@ -6,6 +6,7 @@ import untypy
 from untypy.error import UntypyTypeError
 
 
+@unittest.skip("Obsolete")
 class TestPatching(unittest.TestCase):
 
     def test_not_patching_other_modules(self):
