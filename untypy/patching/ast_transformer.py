@@ -35,18 +35,18 @@ def _is_untypy_patch_call(node):
     if isinstance(node, ast.Expr):
         node = node.value
 
-    return isinstance(node, ast.Call) \
-           and isinstance(node.func, ast.Attribute) \
-           and isinstance(node.func.value, ast.Name) \
-           and node.func.value.id == 'untypy' \
-           and node.func.attr == 'enable' \
- \
- \
+    return (isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == 'untypy'
+            and node.func.attr == 'enable')
+
+
 def _is_untypy_import(node):
-    return isinstance(node, ast.Import) \
-           and len(node.names) == 1 \
-           and isinstance(node.names[0], ast.alias) \
-           and node.names[0].name == 'untypy'
+    return (isinstance(node, ast.Import)
+            and len(node.names) == 1
+            and isinstance(node.names[0], ast.alias)
+            and node.names[0].name == 'untypy')
 
 
 def did_no_code_run_before_untypy_enable(node: ast.Module) -> bool:
