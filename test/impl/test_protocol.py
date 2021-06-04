@@ -1,5 +1,5 @@
 import unittest
-from typing import Protocol, Union, TypeVar, Generic
+from typing import Protocol, Union, TypeVar, Generic, NoReturn
 
 import untypy
 from test.util import DummyDefaultCreationContext, DummyExecutionContext, location_of
@@ -97,7 +97,7 @@ class TestProtocolTestCommon(unittest.TestCase):
 
     def test_concrete_wrong_argument_signature(self):
         class Concrete:
-            def meth(self, b: A):
+            def meth(self, b: A) -> NoReturn:
                 pass
 
         untypy.patch(Concrete)
