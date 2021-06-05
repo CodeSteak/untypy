@@ -37,12 +37,12 @@ def _find_bound_typevars(clas: type) -> (type, dict[TypeVar, Any]):
 
 
 def get_proto_members(proto: type, ctx: CreationContext) -> (
-type, dict[str, (inspect.Signature, dict[str, TypeChecker])]):
+        type, dict[str, (inspect.Signature, dict[str, TypeChecker])]):
     (nproto, typevars) = _find_bound_typevars(proto)
     ctx = ctx.with_typevars(typevars)
     proto = nproto
 
-    blacklist = ['__subclasshook__', '__init__']
+    blacklist = ['__subclasshook__', '__init__', '__class_getitem__']
     member_dict = {}
     for [name, member] in inspect.getmembers(proto):
         if inspect.isfunction(member) and name not in blacklist:
@@ -88,9 +88,7 @@ class ProtocolChecker(TypeChecker):
     def may_change_identity(self) -> bool:
         return True
 
-    def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
-        # TODO: Optimise if signatures are equal?
-        signature_diff = False
+    def check_and_wrap(self, arg: Any, ctx: ExecutionContext, *, signature_diff=False) -> Any:
         for name in self.members.keys():
             if not hasattr(arg, name):
                 raise ctx.wrap(UntypyTypeError(arg, self.describe(),

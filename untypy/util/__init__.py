@@ -1,5 +1,5 @@
 import inspect
-from typing import Optional
+from typing import Optional, Union, List
 
 from untypy.display import IndicatorStr
 from untypy.error import UntypyTypeError, Frame, Location
@@ -155,3 +155,37 @@ class ArgumentExecutionContext(ExecutionContext):
             responsable=responsable
         )
         return err.with_frame(frame)
+
+
+class GenericExecutionContext(ExecutionContext):
+    def __init__(self, *, declared: Union[None, Location, List[Location]] = None,
+                 responsable: Union[None, Location, List[Location]] = None,
+                 upper_ctx: Optional[ExecutionContext] = None):
+        self.declared = declared
+        self.responsable = responsable
+        self.upper_ctx = upper_ctx
+
+    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        declared = []
+        if isinstance(self.declared, Location):
+            declared.append(self.declared)
+        if isinstance(self.declared, list):
+            declared.extend(self.declared)
+
+        responsable = []
+        if isinstance(self.responsable, Location):
+            responsable.append(self.responsable)
+        if isinstance(self.responsable, list):
+            responsable.extend(self.responsable)
+
+        while len(declared) < len(responsable): declared.append(None)
+        while len(declared) > len(responsable): responsable.append(None)
+
+        for (d, r) in zip(declared, responsable):
+            (t, i) = err.next_type_and_indicator()
+            err = err.with_frame(Frame(t, i, d, r))
+
+        if self.upper_ctx is not None:
+            return self.upper_ctx.wrap(err)
+        else:
+            return err

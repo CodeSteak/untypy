@@ -1,12 +1,13 @@
 import inspect
 import typing
 from collections import namedtuple
-from types import ModuleType, FunctionType
+from types import FunctionType
 from typing import Callable, Dict
 
 from untypy.error import UntypyAttributeError, Location
 from untypy.impl import DefaultCreationContext
 from untypy.impl.any import SelfChecker
+from untypy.impl.bound_generic import WrappedGenericAlias
 from untypy.interfaces import CreationContext, TypeChecker, ExecutionContext, WrappedFunctionContextProvider
 from untypy.util import WrappedFunction, ArgumentExecutionContext, ReturnExecutionContext
 
@@ -17,38 +18,16 @@ not_patching = ['__class__']
 GlobalPatchedList = set()
 
 
-def patch_module(mod: ModuleType, cfg: Config = DefaultConfig) -> None:
-    _patch_module_or_class(mod, cfg)
+def patch_class(clas: type, cfg: Config = DefaultConfig):
+    if clas in GlobalPatchedList:
+        return clas
+    GlobalPatchedList.add(clas)
 
+    if hasattr(clas, '__class_getitem__'):
+        original = clas.__class_getitem__
+        setattr(clas, '__class_getitem__', lambda *args: WrappedGenericAlias(original(*args)))
 
-def patch_class(clas: type, cfg: Config = DefaultConfig) -> None:
-    _patch_module_or_class(clas, cfg)
-
-
-def _patch_module_or_class(unit, cfg) -> None:
-    if cfg.verbose:
-        if inspect.ismodule(unit):
-            print(f"Patching Module: {unit}")
-        elif inspect.isclass(unit):
-            print(f"Patching Class: {unit}")
-        else:
-            print(f"Skipping: {unit}")
-
-    if unit in GlobalPatchedList:
-        if cfg.verbose:
-            print(f" Skip, already patched")
-        return
-
-    GlobalPatchedList.add(unit)
-
-    for [name, member] in inspect.getmembers(unit):
-        if name in not_patching:
-            pass
-        elif inspect.isfunction(member):
-            setattr(unit, name, patch_function(member, cfg))
-        elif inspect.isclass(member):
-            patch_class(member, cfg)
-        # else skip
+    return clas
 
 
 def patch_function(fn: FunctionType, cfg: Config = DefaultConfig) -> Callable:

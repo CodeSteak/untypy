@@ -22,6 +22,11 @@ class UntypyAstTransformer(ast.NodeTransformer):
         self.generic_visit(node)
         return node
 
+    def visit_ClassDef(self, node: ast.FunctionDef):
+        node.decorator_list.insert(0, ast.Attribute(ast.Name("untypy", ast.Load()), "patch", ast.Load()))
+        self.generic_visit(node)
+        return node
+
     def visit_Expr(self, node: ast.Expr):
         val = node.value
         if _is_untypy_patch_call(val):

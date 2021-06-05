@@ -4,7 +4,7 @@ import sys
 from types import ModuleType
 from typing import Optional, Any
 
-from .patching import patch_module, patch_function, patch_class
+from .patching import patch_function, patch_class
 from .patching.ast_transformer import UntypyAstTransformer, did_no_code_run_before_untypy_enable
 from .patching.import_hook import install_import_hook
 
@@ -81,7 +81,5 @@ def patch(a: Any) -> Any:
         return patch_function(a)
     elif inspect.isclass(a):
         return patch_class(a)
-    elif inspect.ismodule(a):
-        return patch_module(a)
     else:
         return a
