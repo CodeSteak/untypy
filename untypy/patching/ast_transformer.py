@@ -1,4 +1,5 @@
 import ast
+from typing import Callable
 
 
 class UntypyAstTransformer(ast.NodeTransformer):
@@ -36,6 +37,64 @@ class UntypyAstTransformer(ast.NodeTransformer):
             return node
 
 
+class UntypyAstImportTransformer(ast.NodeTransformer):
+    def __init__(self, predicate: Callable[[str], bool]):
+        self.predicate = predicate
+
+    def visit_Module(self, node: ast.Module):
+        inserts = []
+        need_insert_utypy_imp = True
+        need_insert_utypy_idx = 0
+        for i, child in enumerate(node.body):
+            if _is_untypy_import(node):
+                need_insert_utypy_imp = False
+            elif isinstance(child, ast.ImportFrom) and child.module == '__future__':
+                need_insert_utypy_idx += 1
+            elif isinstance(child, ast.ImportFrom) and self.predicate(child.module):
+                for alias in child.names:
+                    if alias.asname is None:
+                        destname = alias.name
+                    else:
+                        destname = alias.asname
+                    # $destname = untypy.wrap_import($destname)
+                    call = ast.Call(ast.Attribute(ast.Name("untypy", ast.Load()), "wrap_import", ast.Load()),
+                                    [ast.Name(destname, ast.Load())], [])
+                    expr = ast.Assign([ast.Name(destname, ast.Store())], call)
+                    # inserts.append((i + 1, expr)) # insert after
+                    node.body.insert(i + 1, expr)
+            elif isinstance(child, ast.Import):
+                for alias in child.names:
+                    if self.predicate(alias.name):
+                        if alias.asname is None:
+                            destname = alias.name
+                        else:
+                            destname = alias.asname
+                        # $destname = untypy.wrap_import($destname)
+                        call = ast.Call(ast.Attribute(ast.Name("untypy", ast.Load()), "wrap_import", ast.Load()),
+                                        [ast.Name(destname, ast.Load())], [])
+                        expr = ast.Assign([ast.Name(destname, ast.Store())], call)
+                        # inserts.append((i + 1, expr)) # insert after
+                        node.body.insert(i + 1, expr)
+
+        # TODO BUG: Multiple imports index mix up
+        # TODO BUG:
+        for (idx, expr) in inserts:
+            node.body.insert(idx, expr)
+
+        if need_insert_utypy_imp:
+            node.body.insert(need_insert_utypy_idx, ast.Import(names=[ast.alias('untypy', None)]))
+
+        self.generic_visit(node)
+        return node
+
+    def visit_Expr(self, node: ast.Expr):
+        val = node.value
+        if _is_untypy_patch_call(val):
+            return ast.Expr(ast.Constant("# untypy.enable()"))
+        else:
+            self.generic_visit(node)
+            return node
+
 def _is_untypy_patch_call(node):
     if isinstance(node, ast.Expr):
         node = node.value
@@ -44,7 +103,7 @@ def _is_untypy_patch_call(node):
             and isinstance(node.func, ast.Attribute)
             and isinstance(node.func.value, ast.Name)
             and node.func.value.id == 'untypy'
-            and node.func.attr == 'enable')
+            and (node.func.attr == 'enable' or node.func.attr == 'enable_on_imports'))
 
 
 def _is_untypy_import(node):

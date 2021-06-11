@@ -7,8 +7,7 @@ from untypy.error import UntypyTypeError
 
 T = TypeVar('T')
 
-
-@untypy.patch_class
+@untypy.patch
 class A(Generic[T]):
     @untypy.patch
     def passthrough(self, t: T) -> Tuple[int, T]:

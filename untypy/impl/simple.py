@@ -1,4 +1,3 @@
-import inspect
 from typing import Any, Optional
 
 from untypy.error import UntypyTypeError
@@ -27,8 +26,8 @@ class SimpleChecker(TypeChecker):
     def __init__(self, annotation: type, ctx: CreationContext):
         self.annotation = annotation
 
-        # use protocol like wrapping only there are some signatures
-        if class_has_some_type_signatures(annotation):
+        # use protocol like wrapping only if there are some signatures
+        if ctx.should_be_type_checked(annotation):
             self.parent_checker = ParentProtocolChecker(annotation, ctx)
         else:
             self.parent_checker = None
@@ -39,7 +38,7 @@ class SimpleChecker(TypeChecker):
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
         if type(arg) is self.annotation:
             return arg
-        if issubclass(type(arg), self.annotation):
+        if isinstance(arg, self.annotation):
             if self.parent_checker is None:
                 return arg
             else:
@@ -51,16 +50,4 @@ class SimpleChecker(TypeChecker):
         return self.annotation.__name__
 
     def base_type(self) -> Any:
-        if self.parent_checker is not None:
-            return self.parent_checker.base_type()
-        else:
-            return [self.annotation]
-
-
-def class_has_some_type_signatures(clas) -> bool:
-    for [name, member] in inspect.getmembers(clas):
-        if inspect.isfunction(member):
-            if len(inspect.getfullargspec(member).annotations) > 0:
-                return True
-    else:
-        return False
+        return [self.annotation]

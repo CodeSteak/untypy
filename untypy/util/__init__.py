@@ -1,4 +1,5 @@
 import inspect
+import types
 from typing import Optional, Union, List
 
 from untypy.display import IndicatorStr
@@ -116,7 +117,8 @@ class ArgumentExecutionContext(ExecutionContext):
     stack: inspect.FrameInfo
     argument_name: str
 
-    def __init__(self, fn: WrappedFunction, stack: Optional[inspect.FrameInfo], argument_name: str):
+    def __init__(self, fn: Union[WrappedFunction, types.FunctionType], stack: Optional[inspect.FrameInfo],
+                 argument_name: str):
         self.fn = fn
         self.stack = stack
         self.argument_name = argument_name
@@ -128,15 +130,28 @@ class ArgumentExecutionContext(ExecutionContext):
         original = WrappedFunction.find_original(self.fn)
         signature = inspect.signature(original)
 
+        wf = None
+        if (hasattr(self.fn, '__wf')):
+            wf = getattr(self.fn, '__wf')
+        elif isinstance(self.fn, WrappedFunction):
+            wf = self.fn
+
         arglist = []
         for name in signature.parameters:
             if name is self.argument_name:
                 arglist.append(IndicatorStr(f"{name}: ") + error_id)
             else:
-                arglist.append(IndicatorStr(f"{name}: {self.fn.checker_for(name).describe()}"))
+                if wf is not None:
+                    arglist.append(IndicatorStr(f"{name}: {wf.checker_for(name).describe()}"))
+                else:
+                    arglist.append(IndicatorStr(f"{name}"))
 
-        id = IndicatorStr(f"{original.__name__}(") + IndicatorStr(", ").join(arglist) + \
-             IndicatorStr(f") -> {self.fn.checker_for('return').describe()}")
+        id = IndicatorStr(f"{original.__name__}(") + IndicatorStr(", ").join(arglist)
+
+        if wf is not None:
+            id += IndicatorStr(f") -> {wf.checker_for('return').describe()}")
+        else:
+            id += IndicatorStr(f")")
 
         declared = WrappedFunction.find_location(self.fn)
         if self.stack is not None:

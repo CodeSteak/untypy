@@ -19,13 +19,14 @@ class ChildOfA(A):
 class B:
     pass
 
-
+@untypy.patch
 class SomeParent:
     @untypy.patch
     def meth(self) -> str:
         return "Hello"
 
 
+@untypy.patch
 class ChildOfSomeParent(SomeParent):
     @untypy.patch
     def meth(self) -> int:  # Signature does not match.

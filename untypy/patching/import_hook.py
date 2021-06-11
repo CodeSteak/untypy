@@ -5,10 +5,8 @@ from importlib.abc import MetaPathFinder
 from importlib.machinery import SourceFileLoader
 from importlib.util import decode_source
 
-from untypy.patching.ast_transformer import UntypyAstTransformer
 
-
-def install_import_hook(should_patch_predicate: Callable[[str], bool]):
+def install_import_hook(should_patch_predicate: Callable[[str], bool], transformer: ast.NodeTransformer):
     import sys
 
     already_patched = next((f for f in sys.meta_path if isinstance(f, UntypyFinder)), None)
@@ -16,14 +14,16 @@ def install_import_hook(should_patch_predicate: Callable[[str], bool]):
         return
 
     original_finder = next(f for f in sys.meta_path if f.__name__ == 'PathFinder' and hasattr(f, 'find_spec'))
-    sys.meta_path.insert(0, UntypyFinder(original_finder, should_patch_predicate))
+    sys.meta_path.insert(0, UntypyFinder(original_finder, should_patch_predicate, transformer))
 
 
 class UntypyFinder(MetaPathFinder):
 
-    def __init__(self, inner_finder: MetaPathFinder, should_patch_predicate: Callable[[str], bool]):
+    def __init__(self, inner_finder: MetaPathFinder, should_patch_predicate: Callable[[str], bool],
+                 transformer: ast.NodeTransformer):
         self.inner_finder = inner_finder
         self.should_patch_predicate = should_patch_predicate
+        self.transformer = transformer
 
     def find_spec(self, fullname, path=None, target=None):
         if not self.should_instrument(fullname):
@@ -31,7 +31,7 @@ class UntypyFinder(MetaPathFinder):
 
         inner_spec = self.inner_finder.find_spec(fullname, path, target)
         if inner_spec is not None and isinstance(inner_spec.loader, SourceFileLoader):
-            inner_spec.loader = UntypyLoader(inner_spec.loader.name, inner_spec.loader.path)
+            inner_spec.loader = UntypyLoader(inner_spec.loader.name, inner_spec.loader.path, self.transformer)
         return inner_spec
 
     def should_instrument(self, module_name: str) -> bool:
@@ -40,11 +40,15 @@ class UntypyFinder(MetaPathFinder):
 
 class UntypyLoader(SourceFileLoader):
 
+    def __init__(self, fullname, path, transformer: ast.NodeTransformer):
+        super().__init__(fullname, path)
+        self.transformer = transformer
+
     def source_to_code(self, data, path, *, _optimize=-1):
         source = decode_source(data)
         tree = compile(source, path, 'exec', ast.PyCF_ONLY_AST,
                        dont_inherit=True, optimize=_optimize)
-        UntypyAstTransformer().visit(tree)
+        self.transformer.visit(tree)
         ast.fix_missing_locations(tree)
         return compile(tree, path, 'exec', dont_inherit=True, optimize=_optimize)
 

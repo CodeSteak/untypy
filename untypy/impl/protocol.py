@@ -164,7 +164,9 @@ class ProtocolWrappedFunction(WrappedFunction):
 
     def build(self):
         fn = WrappedFunction.find_original(self.inner)
-        fn_of_protocol = getattr(getattr(self.protocol.proto, fn.__name__), '__wf')
+        fn_of_protocol = getattr(self.protocol.proto, fn.__name__)
+        if hasattr(fn, '__wf'):
+            fn_of_protocol = getattr(fn_of_protocol, '__wf')
 
         def wrapper(*args, **kwargs):
             caller = inspect.stack()[1]

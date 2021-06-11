@@ -28,7 +28,7 @@ class DummyDefaultCreationContext(DefaultCreationContext):
             file="dummy",
             line_no=0,
             source_line="dummy"
-        ))
+        ), checkedpkgprefixes=["test"])
 
 
 def location_of(fn):

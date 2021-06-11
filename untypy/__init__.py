@@ -4,10 +4,10 @@ import sys
 from types import ModuleType
 from typing import Optional, Any
 
-from .patching import patch_function, patch_class
-from .patching.ast_transformer import UntypyAstTransformer, did_no_code_run_before_untypy_enable
+from .patching import wrap_function, patch_class, wrap_class, DefaultConfig
+from .patching.ast_transformer import UntypyAstTransformer, did_no_code_run_before_untypy_enable, \
+    UntypyAstImportTransformer
 from .patching.import_hook import install_import_hook
-
 
 # def enable(recursive: bool = True, root: Optional[ModuleType] = None) -> None:
 #     if root is None:
@@ -22,7 +22,11 @@ from .patching.import_hook import install_import_hook
 #             if module_name.startswith(root.__name__ + "."):
 #                 patch_module(sys.modules[module_name])
 
-def enable(recursive: bool = True, root: Optional[ModuleType] = None) -> None:
+GlobalConfig = DefaultConfig
+
+
+def enable(*, recursive: bool = True, root: Optional[ModuleType] = None) -> None:
+    global GlobalConfig
     caller = _find_calling_module()
     exit_after = False
 
@@ -32,6 +36,8 @@ def enable(recursive: bool = True, root: Optional[ModuleType] = None) -> None:
     if caller is None:
         raise Exception("Couldn't find loading Module. This is a Bug")
 
+    GlobalConfig = DefaultConfig._replace(checkedprefixes=[root.__name__])
+
     def predicate(module_name):
         if recursive:
             # Patch if Submodule
@@ -39,11 +45,31 @@ def enable(recursive: bool = True, root: Optional[ModuleType] = None) -> None:
         else:
             raise AssertionError("You cannot run 'untypy.enable()' twice!")
 
-    install_import_hook(predicate)
-    _exec_module_patched(root, exit_after)
+    transformer = UntypyAstTransformer()
+    install_import_hook(predicate, transformer)
+    _exec_module_patched(root, exit_after, transformer)
 
 
-def _exec_module_patched(mod: ModuleType, exit_after: bool):
+def enable_on_imports(*prefixes):
+    global GlobalConfig
+    GlobalConfig = DefaultConfig._replace(checkedprefixes=[*prefixes])
+    caller = _find_calling_module()
+
+    def predicate(module_name):
+        for p in prefixes:
+            if module_name == p:
+                return True
+            elif module_name.startswith(module_name + "."):
+                return True
+            else:
+                return False
+
+    transformer = UntypyAstImportTransformer(predicate)
+    install_import_hook(predicate, transformer)
+    _exec_module_patched(caller, True, transformer)
+
+
+def _exec_module_patched(mod: ModuleType, exit_after: bool, transformer: ast.NodeTransformer):
     source = inspect.getsource(mod)
     tree = compile(source, mod.__file__, 'exec', ast.PyCF_ONLY_AST,
                    dont_inherit=True, optimize=-1)
@@ -53,7 +79,7 @@ def _exec_module_patched(mod: ModuleType, exit_after: bool):
                              "\timport untypy\n"
                              "\tuntypy.enable()")
 
-    UntypyAstTransformer().visit(tree)
+    transformer.visit(tree)
     ast.fix_missing_locations(tree)
     patched_mod = compile(tree, mod.__file__, 'exec', dont_inherit=True, optimize=-1)
     stack = list(map(lambda s: s.frame, inspect.stack()))
@@ -77,9 +103,21 @@ def _find_calling_module() -> Optional[ModuleType]:
 
 
 def patch(a: Any) -> Any:
+    global GlobalConfig
     if inspect.isfunction(a):
-        return patch_function(a)
+        return wrap_function(a, GlobalConfig)
     elif inspect.isclass(a):
-        return patch_class(a)
+        patch_class(a, GlobalConfig)
+        return a
+    else:
+        return a
+
+
+def wrap_import(a: Any) -> Any:
+    global GlobalConfig
+    if inspect.isfunction(a):
+        return wrap_function(a, GlobalConfig)
+    elif inspect.isclass(a):
+        return wrap_class(a, GlobalConfig)
     else:
         return a

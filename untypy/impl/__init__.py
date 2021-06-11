@@ -1,4 +1,5 @@
-from typing import Any, Optional, TypeVar
+import inspect
+from typing import Any, Optional, TypeVar, List
 
 from untypy.interfaces import CreationContext, TypeChecker
 from .any import AnyFactory
@@ -39,9 +40,10 @@ _FactoryList = [
 
 class DefaultCreationContext(CreationContext):
 
-    def __init__(self, typevars: dict[TypeVar, Any], declared_location: Location):
+    def __init__(self, typevars: dict[TypeVar, Any], declared_location: Location, checkedpkgprefixes: List[str]):
         self.typevars = typevars
         self.declared = declared_location
+        self.checkedpkgprefixes = checkedpkgprefixes
 
     def declared_location(self) -> Location:
         return self.declared
@@ -66,4 +68,15 @@ class DefaultCreationContext(CreationContext):
     def with_typevars(self, typevars: dict[TypeVar, Any]) -> CreationContext:
         tv = self.typevars.copy()
         tv.update(typevars)
-        return DefaultCreationContext(tv, self.declared)
+        return DefaultCreationContext(tv, self.declared, self.checkedpkgprefixes)
+
+    def should_be_type_checked(self, annotation: type) -> bool:
+        m = inspect.getmodule(annotation)
+        if m.__name__ in self.checkedpkgprefixes:
+            return True
+
+        for pkgs in self.checkedpkgprefixes:
+            if m.__name__.startswith(pkgs + ".") or pkgs == "":
+                return True
+
+        return False
