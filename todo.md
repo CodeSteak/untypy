@@ -36,10 +36,4 @@ TODO
 [ ] `__future__` Annotations & Generics.
 [ ] Mehre Protocols in Union können aktuell überscheiden
 [ ] _exec_module_patched nur bei __main__, ansonsten Error.
-
-## Ongoing: Import-Wrapping
-
-[ ] Protocols
-[ ] .name support
-[ ] import ohne "from"
-[ ] 
+[ ] kein error bei import * (Unsupported)
