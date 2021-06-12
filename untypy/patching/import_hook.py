@@ -6,7 +6,8 @@ from importlib.machinery import SourceFileLoader
 from importlib.util import decode_source
 
 
-def install_import_hook(should_patch_predicate: Callable[[str], bool], transformer: ast.NodeTransformer):
+def install_import_hook(should_patch_predicate: Callable[[str], bool],
+                        transformer: Callable[[str], ast.NodeTransformer]):
     import sys
 
     already_patched = next((f for f in sys.meta_path if isinstance(f, UntypyFinder)), None)
@@ -20,7 +21,7 @@ def install_import_hook(should_patch_predicate: Callable[[str], bool], transform
 class UntypyFinder(MetaPathFinder):
 
     def __init__(self, inner_finder: MetaPathFinder, should_patch_predicate: Callable[[str], bool],
-                 transformer: ast.NodeTransformer):
+                 transformer: Callable[[str], ast.NodeTransformer]):
         self.inner_finder = inner_finder
         self.should_patch_predicate = should_patch_predicate
         self.transformer = transformer
@@ -40,7 +41,7 @@ class UntypyFinder(MetaPathFinder):
 
 class UntypyLoader(SourceFileLoader):
 
-    def __init__(self, fullname, path, transformer: ast.NodeTransformer):
+    def __init__(self, fullname, path, transformer: Callable[[str], ast.NodeTransformer]):
         super().__init__(fullname, path)
         self.transformer = transformer
 
@@ -48,7 +49,7 @@ class UntypyLoader(SourceFileLoader):
         source = decode_source(data)
         tree = compile(source, path, 'exec', ast.PyCF_ONLY_AST,
                        dont_inherit=True, optimize=_optimize)
-        self.transformer.visit(tree)
+        self.transformer(self.name.split('.')).visit(tree)
         ast.fix_missing_locations(tree)
         return compile(tree, path, 'exec', dont_inherit=True, optimize=_optimize)
 

@@ -9,19 +9,6 @@ from .patching.ast_transformer import UntypyAstTransformer, did_no_code_run_befo
     UntypyAstImportTransformer
 from .patching.import_hook import install_import_hook
 
-# def enable(recursive: bool = True, root: Optional[ModuleType] = None) -> None:
-#     if root is None:
-#         root = _find_calling_module()
-#     if root is None:
-#         raise Exception("Couldn't find loading Module. This is a Bug")
-#
-#     patch_module(root)
-#
-#     if recursive:
-#         for module_name in sys.modules:
-#             if module_name.startswith(root.__name__ + "."):
-#                 patch_module(sys.modules[module_name])
-
 GlobalConfig = DefaultConfig
 
 
@@ -45,9 +32,9 @@ def enable(*, recursive: bool = True, root: Optional[ModuleType] = None) -> None
         else:
             raise AssertionError("You cannot run 'untypy.enable()' twice!")
 
-    transformer = UntypyAstTransformer()
+    transformer = lambda path: UntypyAstTransformer()
     install_import_hook(predicate, transformer)
-    _exec_module_patched(root, exit_after, transformer)
+    _exec_module_patched(root, exit_after, transformer(caller.__name__.split(".")))
 
 
 def enable_on_imports(*prefixes):
@@ -59,14 +46,14 @@ def enable_on_imports(*prefixes):
         for p in prefixes:
             if module_name == p:
                 return True
-            elif module_name.startswith(module_name + "."):
+            elif module_name.startswith(p + "."):
                 return True
             else:
                 return False
 
-    transformer = UntypyAstImportTransformer(predicate)
+    transformer = lambda path: UntypyAstImportTransformer(predicate, path)
     install_import_hook(predicate, transformer)
-    _exec_module_patched(caller, True, transformer)
+    _exec_module_patched(caller, True, transformer(caller.__name__.split(".")))
 
 
 def _exec_module_patched(mod: ModuleType, exit_after: bool, transformer: ast.NodeTransformer):
@@ -117,7 +104,7 @@ def wrap_import(a: Any) -> Any:
     global GlobalConfig
     if inspect.isfunction(a):
         return wrap_function(a, GlobalConfig)
-    elif inspect.isclass(a):
+    elif inspect.isclass(a) or inspect.ismodule(a):
         return wrap_class(a, GlobalConfig)
     else:
         return a

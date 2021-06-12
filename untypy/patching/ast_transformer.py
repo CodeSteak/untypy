@@ -1,5 +1,5 @@
 import ast
-from typing import Callable
+from typing import Callable, List, Optional
 
 
 class UntypyAstTransformer(ast.NodeTransformer):
@@ -38,8 +38,18 @@ class UntypyAstTransformer(ast.NodeTransformer):
 
 
 class UntypyAstImportTransformer(ast.NodeTransformer):
-    def __init__(self, predicate: Callable[[str], bool]):
+    def __init__(self, predicate: Callable[[str], bool], module_path: List[str]):
         self.predicate = predicate
+        self.module_path = module_path
+
+    def resolve_relative_name(self, name: str, levels: Optional[int]) -> str:
+        if levels is None:
+            return name
+        elif levels == 1:
+            return '.'.join(self.module_path + list(name.split('.')))
+        else:
+            prefix = self.module_path[:-(levels - 1)]
+            return '.'.join(prefix + list(name.split('.')))
 
     def visit_Module(self, node: ast.Module):
         inserts = []
@@ -50,7 +60,8 @@ class UntypyAstImportTransformer(ast.NodeTransformer):
                 need_insert_utypy_imp = False
             elif isinstance(child, ast.ImportFrom) and child.module == '__future__':
                 need_insert_utypy_idx += 1
-            elif isinstance(child, ast.ImportFrom) and self.predicate(child.module):
+            elif isinstance(child, ast.ImportFrom) and self.predicate(
+                    self.resolve_relative_name(child.module, child.level)):
                 for alias in child.names:
                     if alias.asname is None:
                         destname = alias.name
@@ -60,8 +71,8 @@ class UntypyAstImportTransformer(ast.NodeTransformer):
                     call = ast.Call(ast.Attribute(ast.Name("untypy", ast.Load()), "wrap_import", ast.Load()),
                                     [ast.Name(destname, ast.Load())], [])
                     expr = ast.Assign([ast.Name(destname, ast.Store())], call)
-                    # inserts.append((i + 1, expr)) # insert after
                     node.body.insert(i + 1, expr)
+
             elif isinstance(child, ast.Import):
                 for alias in child.names:
                     if self.predicate(alias.name):
@@ -69,10 +80,19 @@ class UntypyAstImportTransformer(ast.NodeTransformer):
                             destname = alias.name
                         else:
                             destname = alias.asname
+
                         # $destname = untypy.wrap_import($destname)
+                        # python ast weirdness
+                        def create_attribute(levels: List[str], op=ast.Store()):
+                            if len(levels) == 1:
+                                return ast.Name(levels[0], ctx=op)
+                            else:
+                                return ast.Attribute(create_attribute(levels[:-1], ast.Load()), levels[-1], ctx=op)
+
+                        destpath = destname.split(".")
                         call = ast.Call(ast.Attribute(ast.Name("untypy", ast.Load()), "wrap_import", ast.Load()),
-                                        [ast.Name(destname, ast.Load())], [])
-                        expr = ast.Assign([ast.Name(destname, ast.Store())], call)
+                                        [create_attribute(destpath, ast.Load())], [])
+                        expr = ast.Assign([create_attribute(destpath)], call)
                         # inserts.append((i + 1, expr)) # insert after
                         node.body.insert(i + 1, expr)
 

@@ -73,8 +73,18 @@ class WrappedType:
         else:
             return isinstance(instance, cls.__inner_type)
 
-    # TODO allow static vars
-
+    def __getattr__(self, item):
+        inner_item = getattr(self.__inner_type, item)
+        if type(inner_item):
+            wf = WrappedType(inner_item, self.__ctx)
+        elif callable(inner_item):
+            (signature, checker) = find_signature(inner_item, self.__ctx)
+            wf = WrappedClassFunction([], inner_item, signature, checker).build()
+        else:
+            # todo: allow direct access of member vars
+            raise AttributeError()
+        setattr(self, item, wf)
+        return wf
 
 class WrappedClass:
 
@@ -85,12 +95,12 @@ class WrappedClass:
 
     def __getattr__(self, item):
         inner_item = getattr(self.__inner, item)
-        if callable(inner_item):
+        if type(inner_item) == type:
+            wf = WrappedType(inner_item, self.__ctx)
+        elif callable(inner_item):
             inner_item = getattr(self.__inner_type, item)
             (signature, checker) = find_signature(inner_item, self.__ctx)
-            wf = WrappedClassFunction(self.__inner, inner_item, signature, checker).build()
-        elif type(inner_item) == type:
-            wf = WrappedType(inner_item, self.__ctx)
+            wf = WrappedClassFunction((self.__inner,), inner_item, signature, checker).build()
         else:
             # todo: allow direct access of member vars
             raise AttributeError()
@@ -116,7 +126,7 @@ class WrappedClassFunction(WrappedFunction):
         def wrapper(*args, **kwargs):
             caller = inspect.stack()[1]
             (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n),
-                                                 (self.me, *args), kwargs)
+                                                 (*self.me, *args), kwargs)
             ret = fn(*args, **kwargs)
             return self.wrap_return(ret, ReturnExecutionContext(self))
 
