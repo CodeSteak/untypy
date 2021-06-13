@@ -1,5 +1,6 @@
 import inspect
-from typing import Any, Callable
+from types import ModuleType
+from typing import Any, Callable, Union, Optional
 
 from untypy.error import Location, UntypyAttributeError
 from untypy.impl.any import SelfChecker, AnyChecker
@@ -48,85 +49,74 @@ def wrap_arguments(signature: inspect.signature, checker: dict[str, TypeChecker]
     return bindings.args, bindings.kwargs
 
 
-class WrappedType:
-    def __init__(self, inner_type: type, ctx: CreationContext):
-        self.__inner_type = inner_type
-        self.__ctx = ctx
+class EmptyClass:
+    pass
 
-        self.__constructor = getattr(inner_type, '__init__')
-        (signature, checker) = find_signature(self.__constructor, ctx)
-        self.__constructor_sig = signature
-        self.__constructor_checker = checker
 
-    def __call__(self, *args, **kwargs):
-        caller = inspect.stack()[1]
-        new = self.__inner_type.__new__(self.__inner_type)
-        (args, kwargs) = wrap_arguments(self.__constructor_sig, self.__constructor_checker,
-                                        lambda n: ArgumentExecutionContext(self.__constructor, caller, n),
-                                        (new, *args), kwargs)
-        self.__constructor(*args, **kwargs)
-        return WrappedClass(new, self.__inner_type, self.__ctx)
+def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *, create_type: Optional[type] = None):
+    blacklist = dir(EmptyClass)
+    whitelist = ['__init__']
 
-    def __instancecheck__(cls, instance):
-        if hasattr(instance, '__subclasscheck__'):
-            return instance.__subclasscheck__(cls.__inner_type)
-        else:
-            return isinstance(instance, cls.__inner_type)
+    create_fn = None
+    if create_type is not None:
+        create_fn = lambda: create_type.__new__(create_type)
 
-    def __getattr__(self, item):
-        inner_item = getattr(self.__inner_type, item)
-        if type(inner_item):
-            wf = WrappedType(inner_item, self.__ctx)
-        elif callable(inner_item):
-            (signature, checker) = find_signature(inner_item, self.__ctx)
-            wf = WrappedClassFunction([], inner_item, signature, checker).build()
-        else:
-            # todo: allow direct access of member vars
-            raise AttributeError()
-        setattr(self, item, wf)
-        return wf
+    if type(template) is type and create_type is None:
+        create_fn = lambda: template.__new__(template)
 
-class WrappedClass:
+    if create_fn is None:
+        def raise_err():
+            raise TypeError("This is not a Callable")
 
-    def __init__(self, inner: Any, inner_type: type, ctx: CreationContext):
-        self.__inner_type = inner_type
-        self.__inner = inner
-        self.__ctx = ctx
+        create_fn = raise_err
 
-    def __getattr__(self, item):
-        inner_item = getattr(self.__inner, item)
-        if type(inner_item) == type:
-            wf = WrappedType(inner_item, self.__ctx)
-        elif callable(inner_item):
-            inner_item = getattr(self.__inner_type, item)
-            (signature, checker) = find_signature(inner_item, self.__ctx)
-            wf = WrappedClassFunction((self.__inner,), inner_item, signature, checker).build()
-        else:
-            # todo: allow direct access of member vars
-            raise AttributeError()
-        setattr(self, item, wf)
-        return wf
+    list_of_attr = dict()
+    for attr in dir(template):
+        if attr in blacklist and attr not in whitelist:
+            continue
 
-    def __subclasscheck__(self, subclass):
-        return issubclass(subclass, self.__inner_type)
+        original = getattr(template, attr)
+        if type(original) == type:  # Note: Order matters, types are also callable
+            if type(template) is type:
+                list_of_attr[attr] = WrappedType(original, ctx)
+
+        elif callable(original):
+            (signature, checker) = find_signature(original, ctx)
+            list_of_attr[attr] = WrappedClassFunction(original, signature, checker, create_fn=create_fn).build()
+    if type(template) is type:
+        return type("WrappedClass", (template,), list_of_attr)
+    elif inspect.ismodule(template):
+        return type("WrappedModule", (), list_of_attr)
 
 
 class WrappedClassFunction(WrappedFunction):
-    def __init__(self, me, inner: Callable,
+    def __init__(self,
+                 inner: Callable,
                  signature: inspect.Signature,
-                 checker: dict[str, TypeChecker]):
-        self.me = me
+                 checker: dict[str, TypeChecker], *,
+                 create_fn: Callable[[], Any]):
         self.inner = inner
         self.signature = signature
         self.checker = checker
+        self.create_fn = create_fn
 
     def build(self):
         fn = self.inner
+        name = fn.__name__
 
-        def wrapper(*args, **kwargs):
+        def wrapper_cls(*args, **kwargs):
             caller = inspect.stack()[1]
             (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n),
-                                                 (*self.me, *args), kwargs)
+                                                 args, kwargs)
+            ret = fn(*args, **kwargs)
+            return self.wrap_return(ret, ReturnExecutionContext(self))
+
+        def wrapper_self(me, *args, **kwargs):
+            if name == '__init__':
+                me.__inner = self.create_fn()
+            caller = inspect.stack()[1]
+            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n),
+                                                 (me.__inner, *args), kwargs)
             ret = fn(*args, **kwargs)
             return self.wrap_return(ret, ReturnExecutionContext(self))
 
@@ -136,7 +126,10 @@ class WrappedClassFunction(WrappedFunction):
         if inspect.iscoroutine(self.inner):
             w = async_wrapper
         else:
-            w = wrapper
+            if 'self' in self.checker:
+                w = wrapper_self
+            else:
+                w = wrapper_cls
 
         setattr(w, '__wrapped__', fn)
         setattr(w, '__name__', fn.__name__)

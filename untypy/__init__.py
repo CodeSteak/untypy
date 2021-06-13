@@ -42,7 +42,8 @@ def enable_on_imports(*prefixes):
     GlobalConfig = DefaultConfig._replace(checkedprefixes=[*prefixes])
     caller = _find_calling_module()
 
-    def predicate(module_name):
+    def predicate(module_name: str):
+        module_name = module_name.replace('__main__.', '')
         for p in prefixes:
             if module_name == p:
                 return True
