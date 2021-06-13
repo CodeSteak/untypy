@@ -83,10 +83,13 @@ def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *, crea
         elif callable(original):
             (signature, checker) = find_signature(original, ctx)
             list_of_attr[attr] = WrappedClassFunction(original, signature, checker, create_fn=create_fn).build()
+    out = None
     if type(template) is type:
-        return type("WrappedClass", (template,), list_of_attr)
+        out = type(f"{template.__name__}Wrapped", (template,), list_of_attr)
     elif inspect.ismodule(template):
-        return type("WrappedModule", (), list_of_attr)
+        out = type("WrappedModule", (), list_of_attr)
+
+    return out
 
 
 class WrappedClassFunction(WrappedFunction):

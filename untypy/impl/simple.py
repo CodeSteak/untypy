@@ -1,7 +1,8 @@
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from untypy.error import UntypyTypeError
 from untypy.impl.protocol import ProtocolChecker
+from untypy.impl.wrappedclass import WrappedType
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 
 
@@ -21,28 +22,43 @@ class ParentProtocolChecker(ProtocolChecker):
 
 class SimpleChecker(TypeChecker):
     annotation: type
-    parent_checker: Optional[ParentProtocolChecker]
+    always_wrap: bool = False
+    parent_checker: Optional[Callable[[Any, ExecutionContext], Any]]
 
     def __init__(self, annotation: type, ctx: CreationContext):
         self.annotation = annotation
 
         # use protocol like wrapping only if there are some signatures
         if ctx.should_be_type_checked(annotation):
-            self.parent_checker = ParentProtocolChecker(annotation, ctx)
+            if hasattr(annotation, '__patched'):
+                p = ParentProtocolChecker(annotation, ctx)
+                self.parent_checker = p.check_and_wrap
+            else:
+                # annotation is from an wrapped import
+                t = WrappedType(annotation, ctx)
+
+                def wrap(i, ctx):
+                    instance = t.__new__(t)
+                    instance._WrappedClassFunction__inner = i
+                    return instance
+
+                self.always_wrap = True
+                self.parent_checker = wrap
         else:
             self.parent_checker = None
+
 
     def may_be_wrapped(self) -> bool:
         return True
 
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
-        if type(arg) is self.annotation:
+        if type(arg) is self.annotation and not self.always_wrap:
             return arg
         if isinstance(arg, self.annotation):
             if self.parent_checker is None:
                 return arg
             else:
-                return self.parent_checker.check_and_wrap(arg, ctx)
+                return self.parent_checker(arg, ctx)
         else:
             raise ctx.wrap(UntypyTypeError(arg, self.describe()))
 

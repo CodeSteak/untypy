@@ -65,6 +65,9 @@ class DefaultCreationContext(CreationContext):
         else:
             return False, None
 
+    def all_typevars(self) -> List[TypeVar]:
+        return list(self.typevars.keys())
+
     def with_typevars(self, typevars: dict[TypeVar, Any]) -> CreationContext:
         tv = self.typevars.copy()
         tv.update(typevars)

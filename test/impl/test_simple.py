@@ -8,14 +8,17 @@ from untypy.impl.simple import SimpleFactory
 from untypy.impl.union import UnionFactory
 
 
+@untypy.patch
 class A:
     pass
 
 
+@untypy.patch
 class ChildOfA(A):
     pass
 
 
+@untypy.patch
 class B:
     pass
 

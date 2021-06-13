@@ -108,7 +108,6 @@ class TypedCallable(Callable, WrappedFunction):
     def checker_for(self, name: str) -> TypeChecker:
         raise NotImplementedError
 
-
 class TypedCallableReturnExecutionContext(ExecutionContext):
     upper: ExecutionContext
     fn: TypedCallable
