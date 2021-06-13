@@ -11,6 +11,7 @@ from untypy.util import ArgumentExecutionContext, ReturnExecutionContext
 
 def find_signature(member, ctx: CreationContext):
     signature = inspect.signature(member)
+
     checkers = {}
     for key in signature.parameters:
         if key == 'self':
@@ -81,8 +82,13 @@ def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *, crea
                 list_of_attr[attr] = WrappedType(original, ctx)
 
         elif callable(original):
-            (signature, checker) = find_signature(original, ctx)
-            list_of_attr[attr] = WrappedClassFunction(original, signature, checker, create_fn=create_fn).build()
+            try:
+                (signature, checker) = find_signature(original, ctx)
+                list_of_attr[attr] = WrappedClassFunction(original, signature, checker, create_fn=create_fn).build()
+            except ValueError as e:
+                # this fails sometimes on built-ins.
+                # "ValueError: no signature found for builtin"
+                pass
     out = None
     if type(template) is type:
         out = type(f"{template.__name__}Wrapped", (template,), list_of_attr)
@@ -116,12 +122,16 @@ class WrappedClassFunction(WrappedFunction):
 
         def wrapper_self(me, *args, **kwargs):
             if name == '__init__':
+                me.__return_ctx = None
                 me.__inner = self.create_fn()
             caller = inspect.stack()[1]
             (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n),
                                                  (me.__inner, *args), kwargs)
             ret = fn(*args, **kwargs)
-            return self.wrap_return(ret, ReturnExecutionContext(self))
+            if me.__return_ctx is None:
+                return self.wrap_return(ret, ReturnExecutionContext(self))
+            else:
+                return self.wrap_return(ret, me.__return_ctx)
 
         async def async_wrapper(*args, **kwargs):
             raise AssertionError("Not correctly implemented see wrapper")

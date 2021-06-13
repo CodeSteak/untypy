@@ -40,6 +40,7 @@ class SimpleChecker(TypeChecker):
                 def wrap(i, ctx):
                     instance = t.__new__(t)
                     instance._WrappedClassFunction__inner = i
+                    instance._WrappedClassFunction__return_ctx = None
                     return instance
 
                 self.always_wrap = True

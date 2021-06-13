@@ -1,9 +1,10 @@
 import inspect
-from typing import Any, Optional, TypeVar, List
+from typing import Any, Optional, TypeVar, List, Dict
 
 from untypy.interfaces import CreationContext, TypeChecker
 from .any import AnyFactory
 from .callable import CallableFactory
+from .dict import DictFactory
 from .dummy_delayed import DummyDelayedFactory
 from .generator import GeneratorFactory
 from .generic import GenericFactory
@@ -33,6 +34,7 @@ _FactoryList = [
     GeneratorFactory(),
     IteratorFactory(),
     ProtocolFactory(),
+    DictFactory(),
     #
     SimpleFactory()
 ]
@@ -40,7 +42,7 @@ _FactoryList = [
 
 class DefaultCreationContext(CreationContext):
 
-    def __init__(self, typevars: dict[TypeVar, Any], declared_location: Location, checkedpkgprefixes: List[str]):
+    def __init__(self, typevars: Dict[TypeVar, Any], declared_location: Location, checkedpkgprefixes: List[str]):
         self.typevars = typevars
         self.declared = declared_location
         self.checkedpkgprefixes = checkedpkgprefixes
@@ -68,7 +70,7 @@ class DefaultCreationContext(CreationContext):
     def all_typevars(self) -> List[TypeVar]:
         return list(self.typevars.keys())
 
-    def with_typevars(self, typevars: dict[TypeVar, Any]) -> CreationContext:
+    def with_typevars(self, typevars: Dict[TypeVar, Any]) -> CreationContext:
         tv = self.typevars.copy()
         tv.update(typevars)
         return DefaultCreationContext(tv, self.declared, self.checkedpkgprefixes)
