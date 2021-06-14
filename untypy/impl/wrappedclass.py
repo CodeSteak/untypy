@@ -50,13 +50,10 @@ def wrap_arguments(signature: inspect.signature, checker: dict[str, TypeChecker]
     return bindings.args, bindings.kwargs
 
 
-class EmptyClass:
-    pass
-
-
 def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *, create_type: Optional[type] = None):
-    blacklist = dir(EmptyClass)
-    whitelist = ['__init__']
+    blacklist = ['__class__', '__delattr__', '__dict__', '__dir__',
+                 '__doc__', '__getattribute__', '__getattr__', '__init_subclass__',
+                 '__new__', '__setattr__', '__subclasshook__', '__weakref__']
 
     create_fn = None
     if create_type is not None:
@@ -73,7 +70,7 @@ def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *, crea
 
     list_of_attr = dict()
     for attr in dir(template):
-        if attr in blacklist and attr not in whitelist:
+        if attr in blacklist:
             continue
 
         original = getattr(template, attr)
