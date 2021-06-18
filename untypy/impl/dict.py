@@ -3,6 +3,7 @@ from typing import Any, Optional, TypeVar, Callable
 from untypy.error import UntypyTypeError
 from untypy.impl.wrappedclass import WrappedType
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
+from untypy.util import ReplaceTypeExecutionContext
 
 K = TypeVar('Key')
 V = TypeVar('Value')
@@ -33,12 +34,18 @@ class DictFactory(TypeCheckerFactory):
             bindings[K] = annotation.__args__[0]
             bindings[V] = annotation.__args__[1]
 
+            # todo find better code to handle this
+            k = ctx.find_checker(annotation.__args__[0])
+            v = ctx.find_checker(annotation.__args__[1])
+
+            name = f"Dict[{k.describe()}, {v.describe()}]"
+
             t = WrappedType(DictDecl, ctx.with_typevars(bindings))
 
             def wrap(i, ctx):
                 instance = t.__new__(t)
                 instance._WrappedClassFunction__inner = i
-                instance._WrappedClassFunction__return_ctx = ctx
+                instance._WrappedClassFunction__return_ctx = ReplaceTypeExecutionContext(ctx, name)
                 return instance
 
             return DictChecker(wrap)
@@ -48,7 +55,7 @@ class DictFactory(TypeCheckerFactory):
 
 class DictChecker(TypeChecker):
 
-    def __init__(self, inner: Callable[[Any], Any]):
+    def __init__(self, inner: Callable[[Any, ExecutionContext], Any]):
         self.inner = inner
 
     def may_change_identity(self) -> bool:

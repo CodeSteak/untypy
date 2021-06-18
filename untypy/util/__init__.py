@@ -7,6 +7,23 @@ from untypy.error import UntypyTypeError, Frame, Location
 from untypy.interfaces import ExecutionContext, TypeChecker, WrappedFunction
 
 
+class ReplaceTypeExecutionContext(ExecutionContext):
+
+    def __init__(self, upper: Optional[ExecutionContext], name: str):
+        self.upper = upper
+        self.name = name
+
+    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        err = err.with_frame(Frame(
+            self.name,
+            None, None, None
+        ))
+
+        if self.upper is not None:
+            err = self.upper.wrap(err)
+        return err
+
+
 class CompoundTypeExecutionContext(ExecutionContext):
     upper: ExecutionContext
     checkers: list[TypeChecker]
