@@ -37,7 +37,7 @@ def _find_bound_typevars(clas: type) -> (type, dict[TypeVar, Any]):
 
 
 def get_proto_members(proto: type, ctx: CreationContext) -> (
-        type, dict[str, (inspect.Signature, dict[str, TypeChecker])]):
+        type, dict[TypeVar, Any], dict[str, (inspect.Signature, dict[str, TypeChecker])]):
     (nproto, typevars) = _find_bound_typevars(proto)
     ctx = ctx.with_typevars(typevars)
     proto = nproto
@@ -76,14 +76,15 @@ def get_proto_members(proto: type, ctx: CreationContext) -> (
                                                     f"in Protocol {proto.__name__}.\n"))
             checkers['return'] = return_checker
             member_dict[name] = (signature, checkers)
-    return (nproto, member_dict)
+    return (nproto, typevars, member_dict)
 
 
 class ProtocolChecker(TypeChecker):
     def __init__(self, proto: type, ctx: CreationContext):
-        (nproto, members) = get_proto_members(proto, ctx)
+        (nproto, typevars, members) = get_proto_members(proto, ctx)
         self.proto = nproto
         self.members = members
+        self.typevars = typevars
 
     def may_change_identity(self) -> bool:
         return True
@@ -93,18 +94,19 @@ class ProtocolChecker(TypeChecker):
             if not hasattr(arg, name):
                 raise ctx.wrap(UntypyTypeError(arg, self.describe(),
                                                notes=[f"{type(arg).__name__} is missing method '{name}'."]))
-            if not signature_diff:
-                if hasattr(getattr(arg, name), '__signature__'):
-                    arg_signature = getattr(arg, name).__signature__
-                    (prot_signature, _protdict) = self.members[name]
-                    if prot_signature != arg_signature:
-                        signature_diff = True
-                else:
-                    signature_diff = True
-        if not signature_diff:
-            return arg
-        else:
-            return ProtocolWrapper(arg, self, ctx)
+            # This Optimization does not work with generics. Maybe fix and cache.
+            # if not signature_diff:
+            #    if hasattr(getattr(arg, name), '__signature__'):
+            #        arg_signature = getattr(arg, name).__signature__
+            #        (prot_signature, _protdict) = self.members[name]
+            #        if prot_signature != arg_signature:
+            #            signature_diff = True
+            #    else:
+            #        signature_diff = True
+        # if not signature_diff:
+        #    return arg
+        # else:
+        return ProtocolWrapper(arg, self, ctx)
 
     def base_type(self) -> list[Any]:
         # Protocols are distinguishable by method definitions
@@ -119,6 +121,19 @@ class ProtocolChecker(TypeChecker):
 
     def protocol_type(self) -> str:
         return f"Protocol"
+
+    def protoname(self):
+        # TODO: use checker desc.
+        desc = []
+        for name in self.members:
+            (sig, binds) = self.members[name]
+            for argname in sig.parameters:
+                if isinstance(sig.parameters[argname].annotation, TypeVar):
+                    desc.append(binds[argname].describe())
+        if len(desc) > 0:
+            return f"{self.proto.__name__}[" + (', '.join(desc)) + "]"
+        else:
+            return f"{self.proto.__name__}"
 
 
 class ProtocolWrapper:
@@ -261,9 +276,9 @@ class ProtocolReturnExecutionContext(ExecutionContext):
 
         previous_chain = UntypyTypeError(
             self.wf.me,
-            f"{self.wf.protocol.proto.__name__}"
+            f"{self.wf.protocol.proto.protoname()}"
         ).with_note(
-            f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}' correctly.")
+            f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.protoname()}' correctly.")
 
         previous_chain = self.wf.ctx.wrap(previous_chain)
         return err.with_previous_chain(previous_chain)
@@ -295,9 +310,9 @@ class ProtocolArgumentExecutionContext(ExecutionContext):
 
         previous_chain = UntypyTypeError(
             self.wf.me,
-            f"{self.wf.protocol.proto.__name__}"
+            f"{self.wf.protocol.protoname()}"
         ).with_note(
-            f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.proto.__name__}' correctly.")
+            f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.protoname()}' correctly.")
 
         previous_chain = self.wf.ctx.wrap(previous_chain)
         # err = err.with_inverted_responsibility_type()

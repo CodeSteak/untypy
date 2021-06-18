@@ -50,7 +50,8 @@ def wrap_arguments(signature: inspect.signature, checker: dict[str, TypeChecker]
     return bindings.args, bindings.kwargs
 
 
-def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *, create_type: Optional[type] = None):
+def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *,
+                create_type: Optional[type] = None, name: Optional[str] = None):
     blacklist = ['__class__', '__delattr__', '__dict__', '__dir__',
                  '__doc__', '__getattribute__', '__getattr__', '__init_subclass__',
                  '__new__', '__setattr__', '__subclasshook__', '__weakref__']
@@ -88,7 +89,9 @@ def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *, crea
                 pass
     out = None
     if type(template) is type:
-        out = type(f"{template.__name__}Wrapped", (template,), list_of_attr)
+        if name is None:
+            name = f"{template.__name__}Wrapped"
+        out = type(name, (template,), list_of_attr)
     elif inspect.ismodule(template):
         out = type("WrappedModule", (), list_of_attr)
 
