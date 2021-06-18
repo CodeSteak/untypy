@@ -276,7 +276,7 @@ class ProtocolReturnExecutionContext(ExecutionContext):
 
         previous_chain = UntypyTypeError(
             self.wf.me,
-            f"{self.wf.protocol.proto.protoname()}"
+            f"{self.wf.protocol.protoname()}"
         ).with_note(
             f"Type '{type(self.wf.me).__name__}' does not implement {self.wf.protocol.protocol_type()} '{self.wf.protocol.protoname()}' correctly.")
 
