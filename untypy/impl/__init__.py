@@ -2,6 +2,7 @@ import inspect
 from typing import Any, Optional, TypeVar, List, Dict
 
 from untypy.interfaces import CreationContext, TypeChecker
+from .annotated import AnnotatedFactory
 from .any import AnyFactory
 from .callable import CallableFactory
 from .dict import DictFactory
@@ -17,12 +18,13 @@ from .protocol import ProtocolFactory
 from .simple import SimpleFactory
 from .tuple import TupleFactory
 from .union import UnionFactory
-# More Specific Ones First
 from ..error import Location, UntypyAttributeError
 
+# More Specific Ones First
 _FactoryList = [
     AnyFactory(),
     NoneFactory(),
+    AnnotatedFactory(),
     ProtocolFactory(),  # must be higher then Generic
     GenericFactory(),
     CallableFactory(),

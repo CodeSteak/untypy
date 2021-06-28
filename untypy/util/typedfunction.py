@@ -22,7 +22,7 @@ class TypedFunctionBuilder(WrappedFunction):
         self.signature = inspect.signature(inner)
 
         # SEE: https://www.python.org/dev/peps/pep-0563/#id7
-        annotations = typing.get_type_hints(inner)
+        annotations = typing.get_type_hints(inner, include_extras=True)
 
         checkers = {}
         checked_keys = list(self.signature.parameters)
