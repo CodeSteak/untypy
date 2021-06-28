@@ -28,7 +28,7 @@ class TestTuple(unittest.TestCase):
         (t, i) = cm.exception.next_type_and_indicator()
         i = i.rstrip()
 
-        self.assertEqual(t, "tuple[int, str]")
+        self.assertEqual(t, "Tuple[int, str]")
         self.assertEqual(i, "^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
@@ -43,7 +43,7 @@ class TestTuple(unittest.TestCase):
         (t, i) = cm.exception.next_type_and_indicator()
         i = i.rstrip()
 
-        self.assertEqual(t, "tuple[int, str]")
+        self.assertEqual(t, "Tuple[int, str]")
         self.assertEqual(i, "           ^^^")
 
         # This DummyExecutionContext is responsable
@@ -59,7 +59,7 @@ class TestTuple(unittest.TestCase):
         (t, i) = cm.exception.next_type_and_indicator()
         i = i.rstrip()
 
-        self.assertEqual(t, "tuple[int, DummyDelayedType]")
+        self.assertEqual(t, "Tuple[int, DummyDelayedType]")
         self.assertEqual(i, "           ^^^^^^^^^^^^^^^^")
 
         # This DummyExecutionContext is responsable
