@@ -99,7 +99,7 @@ class ProtocolChecker(TypeChecker):
     def may_change_identity(self) -> bool:
         return True
 
-    def check_and_wrap(self, arg: Any, ctx: ExecutionContext, *, signature_diff=False) -> Any:
+    def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
         if type(arg) in self.wrapper_types:
             return self.wrapper_types[type(arg)](arg, ctx)
         else:

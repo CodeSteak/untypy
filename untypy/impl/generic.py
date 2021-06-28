@@ -10,6 +10,14 @@ class GenericProtocolChecker(ProtocolChecker):
     def protocol_type(self) -> str:
         return "Generic"
 
+    def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
+        if not isinstance(arg, self.proto):
+            raise ctx.wrap(UntypyTypeError(
+                expected=self.describe(),
+                given=arg
+            )).with_note(f"Type '{type(arg).__name__}' does not inherit from '{self.proto.__name__}'")
+        return super().check_and_wrap(arg, ctx)
+
 
 class GenericFactory(TypeCheckerFactory):
 
