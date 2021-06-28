@@ -23,6 +23,7 @@ from ..error import Location, UntypyAttributeError
 _FactoryList = [
     AnyFactory(),
     NoneFactory(),
+    ProtocolFactory(),  # must be higher then Generic
     GenericFactory(),
     CallableFactory(),
     ListFactory(),
@@ -33,7 +34,6 @@ _FactoryList = [
     DummyDelayedFactory(),
     GeneratorFactory(),
     IteratorFactory(),
-    ProtocolFactory(),
     DictFactory(),
     #
     SimpleFactory()
