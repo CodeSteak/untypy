@@ -131,12 +131,12 @@ class TestProtocolGenerics(TestProtocolTestCommon):
     def setUp(self) -> None:
         T = TypeVar("T")
 
-        class ProtoReturnGeneric(Generic[T]):
+        class ProtoReturnGeneric(Protocol[T]):
             @untypy.patch
             def meth(self) -> T:
                 raise NotImplementedError
 
-        class ProtoReceiveGeneric(Generic[T]):
+        class ProtoReceiveGeneric(Protocol[T]):
             @untypy.patch
             def meth(self, b: T) -> None:
                 raise NotImplementedError
@@ -144,10 +144,10 @@ class TestProtocolGenerics(TestProtocolTestCommon):
         self.sig_b = "~T=B"
         self.ProtoReturnB = ProtoReturnGeneric
         self.ProtoReceiveB = ProtoReceiveGeneric
-        self.ProtoReturnBName = "ProtoReturnGeneric(Generic)"
-        self.ProtoReceiveBName = "ProtoReceiveGeneric(Generic)"
-        self.checker_return = GenericFactory().create_from(ProtoReturnGeneric[B], DummyDefaultCreationContext())
-        self.checker_arg = GenericFactory().create_from(ProtoReceiveGeneric[B], DummyDefaultCreationContext())
+        self.ProtoReturnBName = "ProtoReturnGeneric(Protocol)"
+        self.ProtoReceiveBName = "ProtoReceiveGeneric(Protocol)"
+        self.checker_return = ProtocolFactory().create_from(ProtoReturnGeneric[B], DummyDefaultCreationContext())
+        self.checker_arg = ProtocolFactory().create_from(ProtoReceiveGeneric[B], DummyDefaultCreationContext())
 
 
 class TestProtocolGenericTypeRepr(unittest.TestCase):
