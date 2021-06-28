@@ -150,6 +150,24 @@ class TestProtocolGenerics(TestProtocolTestCommon):
         self.checker_arg = GenericFactory().create_from(ProtoReceiveGeneric[B], DummyDefaultCreationContext())
 
 
+class TestProtocolGenericTypeRepr(unittest.TestCase):
+
+    def test_protocol_type_repr(self):
+        T = TypeVar("T")
+
+        # There was a bug, causing T to be listet multiple Times.
+        @untypy.patch
+        class Proto(Generic[T]):
+            @untypy.patch
+            def do_it(self, a: T, b: T) -> None:
+                return
+
+        fac = GenericFactory().create_from(Proto[int], DummyDefaultCreationContext())
+        with self.assertRaises(UntypyTypeError) as cm:
+            fac.check_and_wrap(42, DummyExecutionContext())
+        self.assertEqual(cm.exception.expected, "Proto[~T=int]")
+
+
 class TestProtocolSpecific(unittest.TestCase):
 
     def test_union_protocols(self):

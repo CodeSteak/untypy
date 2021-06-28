@@ -112,23 +112,22 @@ class ProtocolChecker(TypeChecker):
         return [len(self.members.keys())]
 
     def describe(self) -> str:
-        return f"{self.proto.__name__}({self.protocol_type()})"
+        desc = set([])
+        for name in self.members:
+            (sig, binds) = self.members[name]
+            for argname in sig.parameters:
+                if isinstance(sig.parameters[argname].annotation, TypeVar):
+                    desc.add(binds[argname].describe())
+        if len(desc) > 0:
+            return f"{self.proto.__name__}[" + (', '.join(desc)) + "]"
+        else:
+            return f"{self.proto.__name__}({self.protocol_type()})"
 
     def protocol_type(self) -> str:
         return f"Protocol"
 
     def protoname(self):
-        # TODO: use checker desc.
-        desc = []
-        for name in self.members:
-            (sig, binds) = self.members[name]
-            for argname in sig.parameters:
-                if isinstance(sig.parameters[argname].annotation, TypeVar):
-                    desc.append(binds[argname].describe())
-        if len(desc) > 0:
-            return f"{self.proto.__name__}[" + (', '.join(desc)) + "]"
-        else:
-            return f"{self.proto.__name__}"
+        return self.describe()
 
 
 def ProtocolWrapper(protocolchecker: ProtocolChecker, original: type,
