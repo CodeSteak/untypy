@@ -1,7 +1,7 @@
 import inspect
 from collections import namedtuple
 from types import FunctionType
-from typing import Callable
+from typing import Callable, Protocol
 
 from untypy.error import Location
 from untypy.impl import DefaultCreationContext
@@ -31,7 +31,9 @@ def patch_class(clas: type, cfg: Config):
 
     setattr(clas, '__patched', True)
 
-    if hasattr(clas, '__class_getitem__'):
+    is_protocol = hasattr(clas, 'mro') and Protocol in clas.mro()
+
+    if hasattr(clas, '__class_getitem__') and not is_protocol:
         original = clas.__class_getitem__
         setattr(clas, '__class_getitem__', lambda *args: WrappedGenericAlias(original(*args), ctx))
 
