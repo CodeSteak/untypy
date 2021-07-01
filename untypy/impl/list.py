@@ -1,6 +1,6 @@
 import inspect
 from types import GenericAlias
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 from untypy.error import UntypyTypeError, Frame, Location
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
@@ -9,7 +9,8 @@ from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, 
 class ListFactory(TypeCheckerFactory):
 
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
-        if type(annotation) is GenericAlias and annotation.__origin__ == list:
+        if (type(annotation) is GenericAlias and annotation.__origin__ == list) or (
+                type(annotation) is type(List[int]) and annotation.__origin__ == list):
             assert len(annotation.__args__) == 1
             inner = ctx.find_checker(annotation.__args__[0])
             if inner is None:
