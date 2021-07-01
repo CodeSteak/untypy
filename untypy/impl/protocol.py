@@ -122,6 +122,8 @@ class ProtocolChecker(TypeChecker):
             for argname in sig.parameters:
                 if isinstance(sig.parameters[argname].annotation, TypeVar):
                     desc.add(binds[argname].describe())
+            if isinstance(sig.return_annotation, TypeVar):
+                desc.add(binds['return'].describe())
         if len(desc) > 0:
             return f"{self.proto.__name__}[" + (', '.join(desc)) + "]"
         else:
