@@ -144,7 +144,7 @@ class TestProtocolGenerics(TestProtocolTestCommon):
         self.sig_b = "~T=B"
         self.ProtoReturnB = ProtoReturnGeneric
         self.ProtoReceiveB = ProtoReceiveGeneric
-        self.ProtoReturnBName = "ProtoReturnGeneric(Protocol)"
+        self.ProtoReturnBName = "ProtoReturnGeneric[~T=B]"
         self.ProtoReceiveBName = "ProtoReceiveGeneric(Protocol)"
         self.checker_return = ProtocolFactory().create_from(ProtoReturnGeneric[B], DummyDefaultCreationContext())
         self.checker_arg = ProtocolFactory().create_from(ProtoReceiveGeneric[B], DummyDefaultCreationContext())
