@@ -38,6 +38,8 @@ def enable(*, recursive: bool = True, root: Optional[ModuleType] = None) -> None
 
 
 def enable_on_imports(*prefixes):
+    print("!!!! THIS FEATURE WAS UNEXPECTED SIDE EFFEKTS WHEN IMPORTING ABSOLUTE SUBMODULES !!!")
+    # TODO: Fix import of submodules should not change parent module.
     global GlobalConfig
     GlobalConfig = DefaultConfig._replace(checkedprefixes=[*prefixes])
     caller = _find_calling_module()
