@@ -103,6 +103,9 @@ def patch(a: Any) -> Any:
         return a
 
 
+typechecked = patch
+
+
 def wrap_import(a: Any) -> Any:
     global GlobalConfig
     if inspect.isfunction(a):
