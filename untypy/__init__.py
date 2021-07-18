@@ -2,7 +2,7 @@ import ast
 import inspect
 import sys
 from types import ModuleType
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
 from .patching import wrap_function, patch_class, wrap_class, DefaultConfig
 from .patching.ast_transformer import UntypyAstTransformer, did_no_code_run_before_untypy_enable, \
@@ -12,7 +12,7 @@ from .patching.import_hook import install_import_hook
 GlobalConfig = DefaultConfig
 
 
-def enable(*, recursive: bool = True, root: Optional[ModuleType] = None) -> None:
+def enable(*, recursive: bool = True, root: Union[ModuleType, str, None] = None) -> None:
     global GlobalConfig
     caller = _find_calling_module()
     exit_after = False
@@ -21,14 +21,18 @@ def enable(*, recursive: bool = True, root: Optional[ModuleType] = None) -> None
         root = caller
         exit_after = True
     if caller is None:
-        raise Exception("Couldn't find loading Module. This is a Bug")
+        raise Exception("Couldn't find loading Module. This is a Bug.")
 
-    GlobalConfig = DefaultConfig._replace(checkedprefixes=[root.__name__])
+    rootname = root
+    if hasattr(rootname, '__name__'):
+        rootname = root.__name__
+
+    GlobalConfig = DefaultConfig._replace(checkedprefixes=[rootname])
 
     def predicate(module_name):
         if recursive:
             # Patch if Submodule
-            return module_name.startswith(root.__name__ + ".")
+            return module_name.startswith(rootname + ".")
         else:
             raise AssertionError("You cannot run 'untypy.enable()' twice!")
 
