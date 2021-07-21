@@ -108,8 +108,8 @@ class ProtocolChecker(TypeChecker):
             return wrapped_type(arg, ctx)
 
     def base_type(self) -> list[Any]:
-        # Protocols are distinguishable by method definitions
-        return list(map(self.members.keys(), lambda x: "Protocol." + x))
+        # Prevent Classes implementing multiple Protocols in one Union by accident.
+        return [Protocol]
 
     def describe(self) -> str:
         desc = set([])

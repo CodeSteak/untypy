@@ -38,8 +38,8 @@ class UnionChecker(TypeChecker):
                                                         f"{dups[base_type].describe()} "
                                                         f"in {self.describe()}. "
                                                         f"Types must be distinguishable inside one Union."
-                                                        f"\nNote: Classes can only be distinguished if its methodnames differ "
-                                                        f"as child classes may get wrapped."
+                                                        f"\nNote: Only one Protocol is allowed inside one Union. "
+                                                        f"Classes could implement multiple Protocols by accident."
                                                         f"\nNote: Multiple Callables or Generics inside one Union are also unsupported."))
                 else:
                     dups[base_type] = checker
