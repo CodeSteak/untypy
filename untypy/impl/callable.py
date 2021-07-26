@@ -73,6 +73,7 @@ class TypedCallable(Callable, WrappedFunction):
         self.return_checker = return_checker
         self.argument_checker = argument_checker
         self.ctx = ctx
+        setattr(self, '__wf', self)
 
     def __call__(self, *args, **kwargs):
         # first is this fn
@@ -80,7 +81,6 @@ class TypedCallable(Callable, WrappedFunction):
         # Use Callers of Callables
         caller = next((e for e in stack if not e.function == '__call__'), None)
 
-        # TODO: KWARGS?
         new_args = []
         i = 0
         for (arg, checker) in zip(args, self.argument_checker):
