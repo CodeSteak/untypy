@@ -71,15 +71,8 @@ class TypedFunctionBuilder(WrappedFunction):
             ret = self.inner(*args, **kwargs)
             return self.wrap_return(ret, ReturnExecutionContext(self))
 
-        async def async_wrapper(*args, **kwargs):
-            # first is this fn
-            caller = inspect.stack()[1]
-            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), args, kwargs)
-            ret = await self.inner(*args, **kwargs)
-            return self.wrap_return(ret, ReturnExecutionContext(self))
-
         if inspect.iscoroutine(self.inner):
-            w = async_wrapper
+            return UntypyAttributeError("Async Functions are currently not supported.")
         else:
             w = wrapper
 
