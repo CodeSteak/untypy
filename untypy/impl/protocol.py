@@ -2,12 +2,12 @@ import inspect
 import typing
 from typing import Protocol, Any, Optional, Callable, Union, TypeVar, Dict, Tuple
 
-from untypy import FunctionCondition
 from untypy.error import UntypyTypeError, UntypyAttributeError, Frame, Location, ResponsibilityType
 from untypy.impl.any import SelfChecker
 from untypy.interfaces import TypeCheckerFactory, CreationContext, TypeChecker, ExecutionContext, \
     WrappedFunctionContextProvider
 from untypy.util import WrappedFunction, ArgumentExecutionContext, ReturnExecutionContext
+from untypy.util.condition import FunctionCondition
 
 
 class ProtocolFactory(TypeCheckerFactory):
