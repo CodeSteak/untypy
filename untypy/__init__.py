@@ -8,7 +8,10 @@ from .patching import wrap_function, patch_class, wrap_class, DefaultConfig
 from .patching.ast_transformer import UntypyAstTransformer, did_no_code_run_before_untypy_enable, \
     UntypyAstImportTransformer
 from .patching.import_hook import install_import_hook
+#
 from .util.condition import FunctionCondition
+
+#
 
 GlobalConfig = DefaultConfig
 
@@ -125,8 +128,15 @@ def postcondition(cond):
     return decorator
 
 
+def unchecked(fn):
+    setattr(fn, "__unchecked", True)
+    return fn
+
 def patch(a: Any) -> Any:
     global GlobalConfig
+    if hasattr(a, '__unchecked'):
+        return a
+
     if inspect.isfunction(a):
         return wrap_function(a, GlobalConfig)
     elif inspect.isclass(a):
