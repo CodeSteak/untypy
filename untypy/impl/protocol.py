@@ -119,7 +119,7 @@ class ProtocolChecker(TypeChecker):
     def describe(self) -> str:
         desc = set([])
         for name in self.members:
-            (sig, binds) = self.members[name]
+            (sig, binds, cond) = self.members[name]
             for argname in sig.parameters:
                 if isinstance(sig.parameters[argname].annotation, TypeVar):
                     desc.add(binds[argname].describe())
