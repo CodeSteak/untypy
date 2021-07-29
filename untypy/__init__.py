@@ -8,6 +8,7 @@ from .patching import wrap_function, patch_class, wrap_class, DefaultConfig
 from .patching.ast_transformer import UntypyAstTransformer, did_no_code_run_before_untypy_enable, \
     UntypyAstImportTransformer
 from .patching.import_hook import install_import_hook
+from .util.condition import FunctionCondition
 
 GlobalConfig = DefaultConfig
 
@@ -94,6 +95,34 @@ def _find_calling_module() -> Optional[ModuleType]:
             if mod is not None:
                 return mod
     return None
+
+
+def _condgetfc(func):
+    if hasattr(func, "__fc"):
+        return getattr(func, "__fc")
+    else:
+        fc = FunctionCondition()
+        setattr(func, "__fc", fc)
+        fc.func = func
+        return fc
+
+
+def precondition(cond):
+    def decorator(func):
+        fc = _condgetfc(func)
+        fc.precondition.append(cond)
+        return func
+
+    return decorator
+
+
+def postcondition(cond):
+    def decorator(func):
+        fc = _condgetfc(func)
+        fc.postcondition.append(cond)
+        return func
+
+    return decorator
 
 
 def patch(a: Any) -> Any:

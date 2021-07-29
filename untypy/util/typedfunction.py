@@ -61,18 +61,23 @@ class TypedFunctionBuilder(WrappedFunction):
 
             checkers['return'] = return_checker
 
+        self.fc = None
+        if hasattr(self.inner, "__fc"):
+            self.fc = getattr(self.inner, "__fc")
         self.checkers = checkers
 
     def build(self):
         def wrapper(*args, **kwargs):
             # first is this fn
             caller = inspect.stack()[1]
-            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), args, kwargs)
+            (args, kwargs, bindings) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), args,
+                                                           kwargs)
             ret = self.inner(*args, **kwargs)
-            return self.wrap_return(ret, ReturnExecutionContext(self))
+            ret = self.wrap_return(ret, bindings, ReturnExecutionContext(self))
+            return ret
 
         if inspect.iscoroutine(self.inner):
-            return UntypyAttributeError("Async Functions are currently not supported.")
+            raise UntypyAttributeError("Async Functions are currently not supported.")
         else:
             w = wrapper
 
@@ -85,14 +90,18 @@ class TypedFunctionBuilder(WrappedFunction):
     def wrap_arguments(self, ctxprv: WrappedFunctionContextProvider, args, kwargs):
         bindings = self.signature.bind(*args, **kwargs)
         bindings.apply_defaults()
+        if self.fc is not None:
+            self.fc.prehook(bindings, ctxprv)
         for name in bindings.arguments:
             check = self.checkers[name]
             ctx = ctxprv(name)
             bindings.arguments[name] = check.check_and_wrap(bindings.arguments[name], ctx)
-        return (bindings.args, bindings.kwargs)
+        return bindings.args, bindings.kwargs, bindings
 
-    def wrap_return(self, ret, ctx: ExecutionContext):
+    def wrap_return(self, ret, bindings, ctx: ExecutionContext):
         check = self.checkers['return']
+        if self.fc is not None:
+            self.fc.posthook(ret, bindings, ctx)
         return check.check_and_wrap(ret, ctx)
 
     def describe(self):

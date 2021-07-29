@@ -69,7 +69,7 @@ class WrappedFunction:
     def wrap_arguments(self, ctxprv: WrappedFunctionContextProvider, args, kwargs):
         raise NotImplementedError
 
-    def wrap_return(self, ret, ctx: ExecutionContext):
+    def wrap_return(self, ret, bindings, ctx: ExecutionContext):
         raise NotImplementedError
 
     def describe(self) -> str:

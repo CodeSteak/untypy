@@ -109,35 +109,36 @@ class WrappedClassFunction(WrappedFunction):
         self.checker = checker
         self.create_fn = create_fn
 
+        self.fc = None
+        if hasattr(self.inner, "__fc"):
+            self.fc = getattr(self.inner, "__fc")
+
     def build(self):
         fn = self.inner
         name = fn.__name__
 
         def wrapper_cls(*args, **kwargs):
             caller = inspect.stack()[1]
-            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n),
-                                                 args, kwargs)
+            (args, kwargs, bindings) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n),
+                                                           args, kwargs)
             ret = fn(*args, **kwargs)
-            return self.wrap_return(ret, ReturnExecutionContext(self))
+            return self.wrap_return(ret, bindings, ReturnExecutionContext(self))
 
         def wrapper_self(me, *args, **kwargs):
             if name == '__init__':
                 me.__return_ctx = None
                 me.__inner = self.create_fn()
             caller = inspect.stack()[1]
-            (args, kwargs) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n),
-                                                 (me.__inner, *args), kwargs)
+            (args, kwargs, bindings) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n),
+                                                           (me.__inner, *args), kwargs)
             ret = fn(*args, **kwargs)
             if me.__return_ctx is None:
-                return self.wrap_return(ret, ReturnExecutionContext(self))
+                return self.wrap_return(ret, bindings, ReturnExecutionContext(self))
             else:
-                return self.wrap_return(ret, me.__return_ctx)
-
-        async def async_wrapper(*args, **kwargs):
-            raise AssertionError("Not correctly implemented see wrapper")
+                return self.wrap_return(ret, bindings, me.__return_ctx)
 
         if inspect.iscoroutine(self.inner):
-            w = async_wrapper
+            raise UntypyAttributeError("Async Functions are currently not supported.")
         else:
             if 'self' in self.checker:
                 w = wrapper_self
@@ -156,14 +157,18 @@ class WrappedClassFunction(WrappedFunction):
     def wrap_arguments(self, ctxprv: WrappedFunctionContextProvider, args, kwargs):
         bindings = self.signature.bind(*args, **kwargs)
         bindings.apply_defaults()
+        if self.fc is not None:
+            self.fc.prehook(bindings, ctxprv)
         for name in bindings.arguments:
             check = self.checker[name]
             ctx = ctxprv(name)
             bindings.arguments[name] = check.check_and_wrap(bindings.arguments[name], ctx)
-        return bindings.args, bindings.kwargs
+        return bindings.args, bindings.kwargs, bindings
 
-    def wrap_return(self, ret, ctx: ExecutionContext):
+    def wrap_return(self, ret, bindings, ctx: ExecutionContext):
         check = self.checker['return']
+        if self.fc is not None:
+            self.fc.posthook(ret, bindings, ctx)
         return check.check_and_wrap(ret, ctx)
 
     def describe(self) -> str:
