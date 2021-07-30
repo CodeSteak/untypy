@@ -88,10 +88,13 @@ class WrappedFunction:
             return fn
 
     @staticmethod
-    def find_location(fn) -> Location:
+    def find_location(fn) -> Optional[Location]:
         fn = WrappedFunction.find_original(fn)
-        return Location(
-            file=inspect.getfile(fn),
-            line_no=inspect.getsourcelines(fn)[1],
-            source_line="".join(inspect.getsourcelines(fn)[0]),
-        )
+        try:
+            return Location(
+                file=inspect.getfile(fn),
+                line_no=inspect.getsourcelines(fn)[1],
+                source_line="".join(inspect.getsourcelines(fn)[0]),
+            )
+        except:  # Failes on builtins
+            return None

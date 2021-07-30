@@ -150,14 +150,18 @@ def ProtocolWrapper(protocolchecker: ProtocolChecker, original: type,
                 f"Type {original.__name__} does not meet the requirements of Protocol {protocolchecker.proto.__name__}. It is missing the function '{fnname}'")
 
         original_fn = getattr(original, fnname)
-        original_fn_signature = inspect.signature(original_fn)
+        try:
+            # fails on built ins - YEAH
+            original_fn_signature = inspect.signature(original_fn)
+        except:
+            original_fn_signature = None
 
         if hasattr(original_fn, '__wf'):
             original_fn = getattr(original_fn, '__wf')
         (sig, argdict, fc) = members[fnname]
 
         for param in sig.parameters:
-            if param not in original_fn_signature.parameters:
+            if original_fn_signature is not None and param not in original_fn_signature.parameters:
                 raise ctx.wrap(UntypyTypeError(
                     expected=protocolchecker.describe(),
                     given=original.__name__
@@ -243,7 +247,7 @@ class ProtocolWrappedFunction(WrappedFunction):
             check = self.checker[name]
             ctx = ctxprv(name)
             bindings.arguments[name] = check.check_and_wrap(bindings.arguments[name], ctx)
-        return bindings.args, bindings.kwargs
+        return bindings.args, bindings.kwargs, bindings
 
     def wrap_return(self, ret, bindings, ctx: ExecutionContext):
         check = self.checker['return']

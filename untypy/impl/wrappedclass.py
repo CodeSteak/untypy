@@ -51,7 +51,10 @@ def wrap_arguments(signature: inspect.signature, checker: dict[str, TypeChecker]
 
 
 def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *,
-                create_type: Optional[type] = None, name: Optional[str] = None):
+                implementation_template: Union[type, ModuleType, None] = None,
+                create_type: Optional[type] = None,
+                name: Optional[str] = None,
+                declared: Optional[Location] = None):
     blacklist = ['__class__', '__delattr__', '__dict__', '__dir__',
                  '__doc__', '__getattribute__', '__getattr__', '__init_subclass__',
                  '__new__', '__setattr__', '__subclasshook__', '__weakref__']
@@ -62,6 +65,9 @@ def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *,
 
     if type(template) is type and create_type is None:
         create_fn = lambda: template.__new__(template)
+
+    if implementation_template is None:
+        implementation_template = template
 
     if create_fn is None:
         def raise_err():
@@ -82,7 +88,10 @@ def WrappedType(template: Union[type, ModuleType], ctx: CreationContext, *,
         elif callable(original):
             try:
                 (signature, checker) = find_signature(original, ctx)
-                list_of_attr[attr] = WrappedClassFunction(original, signature, checker, create_fn=create_fn).build()
+                implementation_fn = getattr(implementation_template, attr)
+                if implementation_fn is not None:
+                    list_of_attr[attr] = WrappedClassFunction(implementation_fn, signature, checker,
+                                                              create_fn=create_fn, declared=declared).build()
             except ValueError as e:
                 # this fails sometimes on built-ins.
                 # "ValueError: no signature found for builtin"
@@ -103,11 +112,13 @@ class WrappedClassFunction(WrappedFunction):
                  inner: Callable,
                  signature: inspect.Signature,
                  checker: dict[str, TypeChecker], *,
-                 create_fn: Callable[[], Any]):
+                 create_fn: Callable[[], Any],
+                 declared: Optional[Location] = None):
         self.inner = inner
         self.signature = signature
         self.checker = checker
         self.create_fn = create_fn
+        self._declared = declared
 
         self.fc = None
         if hasattr(self.inner, "__fc"):
@@ -119,8 +130,9 @@ class WrappedClassFunction(WrappedFunction):
 
         def wrapper_cls(*args, **kwargs):
             caller = inspect.stack()[1]
-            (args, kwargs, bindings) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n),
-                                                           args, kwargs)
+            (args, kwargs, bindings) = self.wrap_arguments(
+                lambda n: ArgumentExecutionContext(self, caller, n, declared=self.declared()),
+                args, kwargs)
             ret = fn(*args, **kwargs)
             return self.wrap_return(ret, bindings, ReturnExecutionContext(self))
 
@@ -129,8 +141,9 @@ class WrappedClassFunction(WrappedFunction):
                 me.__return_ctx = None
                 me.__inner = self.create_fn()
             caller = inspect.stack()[1]
-            (args, kwargs, bindings) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n),
-                                                           (me.__inner, *args), kwargs)
+            (args, kwargs, bindings) = self.wrap_arguments(
+                lambda n: ArgumentExecutionContext(self, caller, n, declared=self.declared()),
+                (me.__inner, *args), kwargs)
             ret = fn(*args, **kwargs)
             if me.__return_ctx is None:
                 return self.wrap_return(ret, bindings, ReturnExecutionContext(self))
@@ -179,5 +192,7 @@ class WrappedClassFunction(WrappedFunction):
         return self.checker[name]
 
     def declared(self) -> Location:
-        fn = WrappedFunction.find_original(self.inner)
-        return WrappedFunction.find_location(self.inner)
+        if self._declared is None:
+            return WrappedFunction.find_location(self.inner)
+        else:
+            return self._declared

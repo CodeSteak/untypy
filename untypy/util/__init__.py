@@ -111,14 +111,16 @@ class ReturnExecutionContext(ExecutionContext):
         return_id = IndicatorStr(next_ty, indicator)
 
         original = WrappedFunction.find_original(self.fn)
-        signature = inspect.signature(original)
 
-        front_sig = []
-        for name in signature.parameters:
-            front_sig.append(f"{name}: {self.fn.checker_for(name).describe()}")
-        front_sig = f"{original.__name__}(" + (", ".join(front_sig)) + ") -> "
-
-        return_id = IndicatorStr(front_sig) + return_id
+        try:
+            signature = inspect.signature(original)  # TODO:!!! FIX BUILTINS
+            front_sig = []
+            for name in signature.parameters:
+                front_sig.append(f"{name}: {self.fn.checker_for(name).describe()}")
+            front_sig = f"{original.__name__}(" + (", ".join(front_sig)) + ") -> "
+            return_id = IndicatorStr(front_sig) + return_id
+        except:
+            return_id = IndicatorStr("???")
 
         declared = WrappedFunction.find_location(self.fn)
         return err.with_frame(Frame(
@@ -134,11 +136,15 @@ class ArgumentExecutionContext(ExecutionContext):
     stack: inspect.FrameInfo
     argument_name: str
 
-    def __init__(self, fn: Union[WrappedFunction, types.FunctionType], stack: Optional[inspect.FrameInfo],
-                 argument_name: str):
+    def __init__(self,
+                 fn: Union[WrappedFunction, types.FunctionType],
+                 stack: Optional[inspect.FrameInfo],
+                 argument_name: str,
+                 declared: Optional[Location] = None):
         self.fn = fn
         self.stack = stack
         self.argument_name = argument_name
+        self.declared = declared
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
         (next_ty, indicator) = err.next_type_and_indicator()
@@ -170,7 +176,11 @@ class ArgumentExecutionContext(ExecutionContext):
         else:
             id += IndicatorStr(f")")
 
-        declared = WrappedFunction.find_location(self.fn)
+        if self.declared is None:
+            declared = WrappedFunction.find_location(self.fn)
+        else:
+            declared = self.declared
+
         if self.stack is not None:
             responsable = Location(
                 file=self.stack.filename,

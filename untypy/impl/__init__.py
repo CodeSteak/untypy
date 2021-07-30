@@ -4,11 +4,12 @@ from typing import Any, Optional, TypeVar, List, Dict
 from untypy.interfaces import CreationContext, TypeChecker
 from .annotated import AnnotatedFactory
 from .any import AnyFactory
+from .bound_typevar import BoundTypeVarFactory
 from .callable import CallableFactory
-from .dict import DictFactory
 from .dummy_delayed import DummyDelayedFactory
 from .generator import GeneratorFactory
 from .generic import GenericFactory
+from .interface import InterfaceFactory
 from .iterator import IteratorFactory
 from .list import ListFactory
 from .literal import LiteralFactory
@@ -27,6 +28,7 @@ _FactoryList = [
     AnnotatedFactory(),
     ProtocolFactory(),  # must be higher then Generic
     GenericFactory(),
+    BoundTypeVarFactory(),
     CallableFactory(),
     ListFactory(),
     LiteralFactory(),
@@ -36,7 +38,8 @@ _FactoryList = [
     DummyDelayedFactory(),
     GeneratorFactory(),
     IteratorFactory(),
-    DictFactory(),
+    # DictFactory(),
+    InterfaceFactory(),
     #
     SimpleFactory()
 ]
