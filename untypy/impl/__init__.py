@@ -4,7 +4,6 @@ from typing import Any, Optional, TypeVar, List, Dict
 from untypy.interfaces import CreationContext, TypeChecker
 from .annotated import AnnotatedFactory
 from .any import AnyFactory
-from .bound_typevar import BoundTypeVarFactory
 from .callable import CallableFactory
 from .dummy_delayed import DummyDelayedFactory
 from .generator import GeneratorFactory
@@ -28,7 +27,6 @@ _FactoryList = [
     AnnotatedFactory(),
     ProtocolFactory(),  # must be higher then Generic
     GenericFactory(),
-    BoundTypeVarFactory(),
     CallableFactory(),
     ListFactory(),
     LiteralFactory(),
@@ -38,7 +36,6 @@ _FactoryList = [
     DummyDelayedFactory(),
     GeneratorFactory(),
     IteratorFactory(),
-    # DictFactory(),
     InterfaceFactory(),
     #
     SimpleFactory()

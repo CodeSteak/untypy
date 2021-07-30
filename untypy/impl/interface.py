@@ -1,4 +1,4 @@
-from typing import TypeVar, Optional, Any, Generic
+from typing import TypeVar, Optional, Any, Generic, Dict
 
 from untypy.error import UntypyAttributeError, UntypyTypeError
 from untypy.impl.wrappedclass import WrappedType
@@ -9,7 +9,7 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-class Dict(Generic[K, V], dict):
+class WDict(Generic[K, V], dict):
     def __getitem__(self, item: K) -> V:
         pass
 
@@ -17,8 +17,11 @@ class Dict(Generic[K, V], dict):
         pass
 
 
+
+
 InterfaceMapping = {
-    dict: (Dict,)
+    dict: (WDict,),
+    Dict: (WDict,),
 }
 
 
@@ -42,7 +45,7 @@ class InterfaceFactory(TypeCheckerFactory):
 
             name = f"{origin.__name__}[" + (', '.join(map(lambda t: t.describe(), inner_checkers))) + "]"
 
-            bindings = dict(zip(bindings, inner_checkers))
+            bindings = dict(zip(bindings, annotation.__args__))
             ctx.with_typevars(bindings)
             template = WrappedType(protocol, ctx.with_typevars(bindings), name=name, implementation_template=origin,
                                    declared=ctx.declared_location())
