@@ -1,4 +1,5 @@
-from typing import TypeVar, Optional, Any, Generic, Dict
+from collections import Iterator, Iterable
+from typing import TypeVar, Optional, Any, Generic, Dict, List, Set
 
 from untypy.error import UntypyAttributeError, UntypyTypeError
 from untypy.impl.wrappedclass import WrappedType
@@ -17,11 +18,44 @@ class WDict(Generic[K, V], dict):
         pass
 
 
+I = TypeVar("I")
+
+
+class WList(Generic[I], list):
+    def __getitem__(self, item: int) -> I:
+        pass
+
+    def __setitem__(self, key: int, value: I) -> None:
+        pass
+
+
+I = TypeVar("I")
+
+
+class WSet(Generic[I], set):
+    def __contains__(self, item: I) -> bool:
+        pass
+
+    def add(self, elem: I) -> None:
+        pass
+
+
+I = TypeVar("I")
+
+
+class WIterable(Generic[I]):
+    def __iter__(self) -> Iterator[I]:
+        pass
 
 
 InterfaceMapping = {
     dict: (WDict,),
     Dict: (WDict,),
+    list: (WList,),
+    List: (WList,),
+    set: (WSet,),
+    Set: (WSet,),
+    Iterable: (WIterable),
 }
 
 

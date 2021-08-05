@@ -1,6 +1,7 @@
 import collections.abc
 import inspect
-from typing import Any, Optional, Generator
+from collections import Generator
+from typing import Any, Optional
 
 from untypy.error import UntypyTypeError, UntypyAttributeError, Location
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
