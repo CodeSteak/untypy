@@ -13,7 +13,7 @@ from .util.condition import FunctionCondition
 GlobalConfig = DefaultConfig
 
 
-def enable(*, recursive: bool = True, root: Union[ModuleType, str, None] = None) -> None:
+def enable(*, recursive: bool = True, root: Union[ModuleType, str, None] = None, prefixes: list[str] = []) -> None:
     global GlobalConfig
     caller = _find_calling_module()
     exit_after = False
@@ -33,7 +33,15 @@ def enable(*, recursive: bool = True, root: Union[ModuleType, str, None] = None)
     def predicate(module_name):
         if recursive:
             # Patch if Submodule
-            return module_name.startswith(rootname + ".")
+            if module_name.startswith(rootname + "."):
+                return True
+            else:
+                for p in prefixes:
+                    if module_name == p:
+                        return True
+                    elif module_name.startswith(p + "."):
+                        return True
+            return False
         else:
             raise AssertionError("You cannot run 'untypy.enable()' twice!")
 
