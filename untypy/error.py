@@ -16,7 +16,7 @@ class Location:
         self.source_line = source_line
 
     def __str__(self):
-        buf = f"{self.file}:\n"
+        buf = f"{self.file}:{self.line_no}\n"
         for i, line in enumerate(self.source_line.splitlines()):
             if i < 5:
                 buf += f"{'{:3}'.format(self.line_no + i)} | {line}\n"
