@@ -13,6 +13,26 @@ from .util.condition import FunctionCondition
 GlobalConfig = DefaultConfig
 
 
+def just_install_hook(prefixes=[]):
+    def predicate(module_name):
+        for p in prefixes:
+            if module_name == p:
+                return True
+            elif module_name.startswith(p + "."):
+                return True
+            return False
+
+    install_import_hook(predicate, lambda path: UntypyAstTransformer())
+
+
+def just_transform(source, modname, symbol='exec'):
+    tree = compile(source, modname, symbol, ast.PyCF_ONLY_AST,
+                   dont_inherit=True, optimize=-1)
+    UntypyAstTransformer().visit(tree)
+    ast.fix_missing_locations(tree)
+    return tree
+
+
 def enable(*, recursive: bool = True, root: Union[ModuleType, str, None] = None, prefixes: list[str] = []) -> None:
     global GlobalConfig
     caller = _find_calling_module()
@@ -136,6 +156,7 @@ def postcondition(cond):
 def unchecked(fn):
     setattr(fn, "__unchecked", True)
     return fn
+
 
 def patch(a: Any) -> Any:
     global GlobalConfig
