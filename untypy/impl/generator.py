@@ -125,8 +125,4 @@ class TypedGeneratorSendContext(CompoundTypeExecutionContext):
         return "Generator"
 
     def responsable(self) -> Optional[Location]:
-        return Location(
-            file=self.stack.filename,
-            line_no=self.stack.lineno,
-            source_line=self.stack.code_context[0]
-        )
+        return Location.from_stack(self.stack)

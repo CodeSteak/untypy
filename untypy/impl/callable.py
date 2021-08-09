@@ -168,11 +168,7 @@ class TypedCallableArgumentExecutionContext(ExecutionContext):
 
         declared = WrappedFunction.find_location(self.fn.inner)
 
-        responsable = Location(
-            file=self.stack.filename,
-            line_no=self.stack.lineno,
-            source_line=self.stack.code_context[0]
-        )
+        responsable = Location.from_stack(self.stack)
 
         frame = Frame(
             type_declared,

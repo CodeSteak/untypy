@@ -45,11 +45,8 @@ def wrap_function(fn: FunctionType, cfg: Config) -> Callable:
 
         return TypedFunctionBuilder(fn, DefaultCreationContext(
             typevars=dict(),
-            declared_location=Location(
-                file=inspect.getfile(fn),
-                line_no=inspect.getsourcelines(fn)[1],
-                source_line="".join(inspect.getsourcelines(fn)[0]),
-            ), checkedpkgprefixes=cfg.checkedprefixes)).build()
+            declared_location=Location.from_code(fn),
+            checkedpkgprefixes=cfg.checkedprefixes)).build()
     else:
         return fn
 
@@ -57,8 +54,5 @@ def wrap_function(fn: FunctionType, cfg: Config) -> Callable:
 def wrap_class(a: type, cfg: Config) -> Callable:
     return WrappedType(a, DefaultCreationContext(
         typevars=dict(),
-        declared_location=Location(
-            file=inspect.getfile(a),
-            line_no=inspect.getsourcelines(a)[1],
-            source_line="".join(inspect.getsourcelines(a)[0]),
-        ), checkedpkgprefixes=cfg.checkedprefixes))
+        declared_location=Location.from_code(a),
+        checkedpkgprefixes=cfg.checkedprefixes))

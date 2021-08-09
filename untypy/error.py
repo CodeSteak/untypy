@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from enum import Enum
 from typing import Any, Optional, Tuple
 
@@ -31,6 +32,35 @@ class Location:
             return False
         return self.file == other.file and self.line_no == other.line_no
 
+    @staticmethod
+    def from_code(obj) -> Location:
+        try:
+            return Location(
+                file=inspect.getfile(obj),
+                line_no=inspect.getsourcelines(obj)[1],
+                source_line="".join(inspect.getsourcelines(obj)[0]),
+            )
+        except Exception:
+            return Location(
+                file=inspect.getfile(obj),
+                line_no=1,
+                source_line=repr(obj)
+            )
+
+    @staticmethod
+    def from_stack(stack) -> Location:
+        try:
+            return Location(
+                file=stack.filename,
+                line_no=stack.lineno,
+                source_line=stack.code_context[0]
+            )
+        except Exception:
+            return Location(
+                file=stack.filename,
+                line_no=stack.lineno,
+                source_line="<Source Not Found>"
+            )
 
 class Frame:
     type_declared: str

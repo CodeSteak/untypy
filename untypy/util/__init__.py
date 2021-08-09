@@ -182,11 +182,7 @@ class ArgumentExecutionContext(ExecutionContext):
             declared = self.declared
 
         if self.stack is not None:
-            responsable = Location(
-                file=self.stack.filename,
-                line_no=self.stack.lineno,
-                source_line=self.stack.code_context[0]
-            )
+            responsable = Location.from_stack(self.stack)
         else:
             responsable = None
 
