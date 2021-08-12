@@ -107,3 +107,6 @@ class InterfaceChecker(TypeChecker):
         instance._WrappedClassFunction__inner = arg
         instance._WrappedClassFunction__return_ctx = ReplaceTypeExecutionContext(ctx, self.name)
         return instance
+
+    def describe(self) -> str:
+        return self.name
