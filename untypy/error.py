@@ -49,18 +49,34 @@ class Location:
 
     @staticmethod
     def from_stack(stack) -> Location:
-        try:
-            return Location(
-                file=stack.filename,
-                line_no=stack.lineno,
-                source_line=stack.code_context[0]
-            )
-        except Exception:
-            return Location(
-                file=stack.filename,
-                line_no=stack.lineno,
-                source_line="<Source Not Found>"
-            )
+        if isinstance(stack, inspect.FrameInfo):
+            try:
+                return Location(
+                    file=stack.filename,
+                    line_no=stack.lineno,
+                    source_line=stack.code_context[0]
+                )
+            except Exception:
+                return Location(
+                    file=stack.filename,
+                    line_no=stack.lineno,
+                    source_line="<Source Not Found>"
+                )
+        else:  # assume sys._getframe(...)
+            try:
+                source_line = inspect.findsource(stack.f_code)[0][stack.f_lineno - 1]
+                return Location(
+                    file=stack.f_code.co_filename,
+                    line_no=stack.f_lineno,
+                    source_line=source_line
+                )
+            except Exception:
+                return Location(
+                    file=stack.f_code.co_filename,
+                    line_no=stack.f_lineno,
+                    source_line="<Source Not Found>"
+                )
+
 
 class Frame:
     type_declared: str

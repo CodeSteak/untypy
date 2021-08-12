@@ -1,4 +1,5 @@
 import inspect
+import sys
 from types import ModuleType
 from typing import Any, Callable, Union, Optional
 
@@ -129,7 +130,7 @@ class WrappedClassFunction(WrappedFunction):
         name = fn.__name__
 
         def wrapper_cls(*args, **kwargs):
-            caller = inspect.stack()[1]
+            caller = sys._getframe(1)
             (args, kwargs, bindings) = self.wrap_arguments(
                 lambda n: ArgumentExecutionContext(self, caller, n, declared=self.declared()),
                 args, kwargs)
@@ -140,7 +141,7 @@ class WrappedClassFunction(WrappedFunction):
             if name == '__init__':
                 me.__return_ctx = None
                 me.__inner = self.create_fn()
-            caller = inspect.stack()[1]
+            caller = sys._getframe(1)
             (args, kwargs, bindings) = self.wrap_arguments(
                 lambda n: ArgumentExecutionContext(self, caller, n, declared=self.declared()),
                 (me.__inner, *args), kwargs)

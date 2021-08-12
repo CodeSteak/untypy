@@ -1,4 +1,5 @@
 import inspect
+import sys
 import typing
 from typing import Callable, Dict
 
@@ -69,7 +70,7 @@ class TypedFunctionBuilder(WrappedFunction):
     def build(self):
         def wrapper(*args, **kwargs):
             # first is this fn
-            caller = inspect.stack()[1]
+            caller = sys._getframe(1)
             (args, kwargs, bindings) = self.wrap_arguments(lambda n: ArgumentExecutionContext(self, caller, n), args,
                                                            kwargs)
             ret = self.inner(*args, **kwargs)

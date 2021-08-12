@@ -1,4 +1,5 @@
 import inspect
+import sys
 import typing
 from typing import Protocol, Any, Optional, Callable, Union, TypeVar, Dict, Tuple
 
@@ -202,7 +203,7 @@ class ProtocolWrappedFunction(WrappedFunction):
             inner_object = me.__inner
             inner_ctx = me.__ctx
 
-            caller = inspect.stack()[1]
+            caller = sys._getframe(1)
             (args, kwargs, bind1) = self.wrap_arguments(lambda n: ArgumentExecutionContext(fn_of_protocol, caller, n),
                                                         (inner_object, *args), kwargs)
             if isinstance(self.inner, WrappedFunction):

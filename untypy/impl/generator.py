@@ -1,5 +1,6 @@
 import collections.abc
 import inspect
+import sys
 from collections import Generator
 from typing import Any, Optional
 
@@ -62,10 +63,7 @@ class GeneratorChecker(TypeChecker):
 
                     sent = yield value_yield
 
-                    # first is this fn
-                    stack = inspect.stack()[1:]
-                    # Use Callers of Callables
-                    caller = next((e for e in stack if not e.function == '__call__'), None)
+                    caller = sys._getframe(1)
 
                     # check sent value (caller is responsable)
                     sent = me.send_checker.check_and_wrap(sent, TypedGeneratorSendContext(caller, me, ctx))

@@ -1,4 +1,5 @@
 import inspect
+import sys
 from collections.abc import Callable as AbcCallable
 from typing import Any, Optional, Callable, Union, Tuple
 
@@ -76,10 +77,7 @@ class TypedCallable(Callable, WrappedFunction):
         setattr(self, '__wf', self)
 
     def __call__(self, *args, **kwargs):
-        # first is this fn
-        stack = inspect.stack()[1:]
-        # Use Callers of Callables
-        caller = next((e for e in stack if not e.function == '__call__'), None)
+        caller = sys._getframe(1)
 
         new_args = []
         i = 0

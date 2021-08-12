@@ -1,4 +1,5 @@
 import inspect
+import sys
 from types import GenericAlias
 from typing import Any, Optional, List
 
@@ -108,45 +109,30 @@ class TypedList(list):
         return TypedListIterator(self)
 
     def append(self, x) -> None:
-        # first is this fn
-        stack = inspect.stack()[1:]
-        # Use Callers of Callables
-        caller = next((e for e in stack if not e.function == '__call__'), None)
+        caller = sys._getframe(1)
         ctx = ListCallerExecutionContext(caller, self.declared)
         self.inner.append(self.checker.check_and_wrap(x, ctx))
 
     def extend(self, iterable) -> None:
-        # first is this fn
-        stack = inspect.stack()[1:]
-        # Use Callers of Callables
-        caller = next((e for e in stack if not e.function == '__call__'), None)
+        caller = sys._getframe(1)
         ctx = ListCallerExecutionContext(caller, self.declared)
         return self.inner.extend(list(map(lambda x: self.checker.check_and_wrap(x, ctx), iterable)))
 
     def insert(self, index, obj) -> None:
-        # first is this fn
-        stack = inspect.stack()[1:]
-        # Use Callers of Callables
-        caller = next((e for e in stack if not e.function == '__call__'), None)
+        caller = sys._getframe(1)
         ctx = ListCallerExecutionContext(caller, self.declared)
 
         return self.inner.insert(index, self.checker.check_and_wrap(obj, ctx))
 
     def __iadd__(self, other):
-        # first is this fn
-        stack = inspect.stack()[1:]
-        # Use Callers of Callables
-        caller = next((e for e in stack if not e.function == '__call__'), None)
+        caller = sys._getframe(1)
         ctx = ListCallerExecutionContext(caller, self.declared)
 
         self.inner.extend(list(map(lambda x: self.checker.check_and_wrap(x, ctx), other)))
         return self
 
     def __setitem__(self, idx, value):
-        # first is this fn
-        stack = inspect.stack()[1:]
-        # Use Callers of Callables
-        caller = next((e for e in stack if not e.function == '__call__'), None)
+        caller = sys._getframe(1)
         ctx = ListCallerExecutionContext(caller, self.declared)
 
         return self.inner.__setitem__(idx, self.checker.check_and_wrap(value, ctx))
