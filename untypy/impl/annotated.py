@@ -20,7 +20,7 @@ class AnnotatedCheckerCallable(AnnotatedChecker):
             # raise error on falsy value
             err = UntypyTypeError(
                 given=arg,
-                expected=repr(self.annotated)
+                expected=self.annotated.describe()
             )
             err = err.with_note(f"\n\nNote: Assertion in Callable failed with {repr(res)}.")
             (t, i) = err.next_type_and_indicator()
@@ -30,6 +30,9 @@ class AnnotatedCheckerCallable(AnnotatedChecker):
                 WrappedFunction.find_location(self.callable),
                 None
             ))
+
+            for info in self.annotated.info:
+                err = err.with_note("    - " + info)
 
             raise ctx.wrap(err)
 
@@ -42,10 +45,15 @@ class AnnotatedCheckerContainer(AnnotatedChecker):
     def check(self, arg: Any, ctx: ExecutionContext) -> None:
         if arg not in self.cont:
             # raise error on falsy value
-            raise ctx.wrap(UntypyTypeError(
+            err = UntypyTypeError(
                 given=arg,
-                expected=repr(self.annotated)
-            )).with_note(f"\n\nNote: {repr(arg)} is not in {repr(self.cont)}.")
+                expected=self.annotated.describe()
+            ).with_note(f"\n\nNote: {repr(arg)} is not in {repr(self.cont)}.")
+
+            for info in self.annotated.info:
+                err = err.with_note("    - " + info)
+
+            raise ctx.wrap(err)
 
 
 class AnnotatedFactory(TypeCheckerFactory):
@@ -69,15 +77,19 @@ class AnnotatedChecker(TypeChecker):
         self.inner = inner
 
         meta = []
+        info = []
         for m in metadata:
             if callable(m):
-                meta.append(AnnotatedCheckerCallable(annotated, m))
+                meta.append(AnnotatedCheckerCallable(self, m))
+            elif isinstance(m, str):
+                info.append(m)
             elif hasattr(m, '__contains__'):
-                meta.append(AnnotatedCheckerContainer(annotated, m))
+                meta.append(AnnotatedCheckerContainer(self, m))
             else:
                 raise ctx.wrap(UntypyAttributeError(f"Unsupported metadata '{repr(m)}' in '{repr(self.annotated)}'.\n"
                                                     f"Only callables or objects providing __contains__ are allowed."))
         self.meta = meta
+        self.info = info
 
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
         wrapped = self.inner.check_and_wrap(arg, AnnotatedCheckerExecutionContext(self, ctx))
@@ -86,7 +98,11 @@ class AnnotatedChecker(TypeChecker):
         return wrapped
 
     def describe(self) -> str:
-        return repr(self.annotated)
+        if len(self.info) > 0:
+            text = ", ".join(map(lambda a: f"'{a}'", self.info))
+            return f"Annotated[{text}]"
+        else:
+            return repr(self.annotated)
 
     def base_type(self):
         return self.inner.base_type()
