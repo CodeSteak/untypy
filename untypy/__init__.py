@@ -20,7 +20,7 @@ def just_install_hook(prefixes=[]):
                 return True
             elif module_name.startswith(p + "."):
                 return True
-            return False
+        return False
 
     install_import_hook(predicate, lambda path: UntypyAstTransformer())
 
