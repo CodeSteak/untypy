@@ -27,6 +27,7 @@ class SimpleChecker(TypeChecker):
 
     def __init__(self, annotation: type, ctx: CreationContext):
         self.annotation = annotation
+        self.always_wrap = False
 
         # use protocol like wrapping only if there are some signatures
         if ctx.should_be_type_checked(annotation):
@@ -43,7 +44,8 @@ class SimpleChecker(TypeChecker):
                     instance._WrappedClassFunction__return_ctx = None
                     return instance
 
-                self.always_wrap = True
+                # TODO: Use only on import_wrapped module
+                # self.always_wrap = True
                 self.parent_checker = wrap
         else:
             self.parent_checker = None
