@@ -1,6 +1,14 @@
-import inspect
-from typing import Optional, Union, Literal, Tuple, Callable
+from __future__ import annotations
+
+"""
+HELLO WOLRD
+"""
 import untypy
+
+untypy.enable()
+
+import inspect
+from typing import Callable
 from untypy.error import UntypyTypeError
 
 
@@ -46,5 +54,4 @@ def simple_int(x: int) -> str:
     return str(x)
 
 if __name__ == '__main__':
-    untypy.enable()
     main()

@@ -1,6 +1,6 @@
 from typing import Optional, Union, Literal, Tuple
-import untypy
 
+import untypy
 
 X = Literal['x']
 O = Literal['o']

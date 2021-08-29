@@ -1,7 +1,9 @@
-from typing import Optional, Union, Literal, Tuple, Callable
+from typing import Callable
+
 import untypy
 
-def adders(n : list[int]) -> list[Callable[[int], int]]:
+
+def adders(n: list[int]) -> list[Callable[[int], int]]:
     out = []
     for i in n:
         out.append(lambda x, add=i: x + add)

@@ -1,5 +1,7 @@
 from typing import Protocol, Literal, Callable
+
 import untypy
+
 
 class Proto(Protocol):
     def meth(self) -> Callable[[int], None]:

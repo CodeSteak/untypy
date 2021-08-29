@@ -1,4 +1,5 @@
 from typing import Protocol, Literal, Callable
+
 import untypy
 
 

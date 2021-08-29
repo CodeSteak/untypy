@@ -1,12 +1,13 @@
-from typing import Protocol, Literal, Callable
-import untypy
+from typing import Protocol, Callable
 
+import untypy
 
 X = Callable[[int], None]
 Y = Callable[[str], None]
 
+
 class Proto(Protocol):
-    def meth(self,  c: Callable[[X], None]) -> None:
+    def meth(self, c: Callable[[X], None]) -> None:
         raise NotImplementedError
 
 class Concrete:

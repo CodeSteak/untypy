@@ -1,7 +1,9 @@
-from typing import Optional, Union, Literal, Tuple, Callable
+from typing import Union, Callable
+
 import untypy
 
-def foo(x : Union[Callable[[], int], int]) -> Callable[[], int]:
+
+def foo(x: Union[Callable[[], int], int]) -> Callable[[], int]:
     if callable(x):
         return x
     else:
