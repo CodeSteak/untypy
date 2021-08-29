@@ -47,7 +47,7 @@ class TestSimple(unittest.TestCase):
         res = checker.check_and_wrap(a, DummyExecutionContext())
         self.assertIs(a, res)
         res = checker.check_and_wrap(child_a, DummyExecutionContext())
-        self.assertIs(child_a, res)
+        self.assertIsNot(child_a, res)  # Wrapped with AWrapper
 
     def test_wrap_negative(self):
         checker = SimpleFactory().create_from(A, DummyDefaultCreationContext())
