@@ -10,7 +10,7 @@ from untypy.impl.wrappedclass import WrappedType
 from untypy.util.typedfunction import TypedFunctionBuilder
 
 Config = namedtuple('PatchConfig', ['verbose', 'checkedprefixes'])
-DefaultConfig = Config(verbose=True, checkedprefixes=[""])
+DefaultConfig = Config(verbose=False, checkedprefixes=[""])
 not_patching = ['__class__']
 
 GlobalPatchedList = set()
