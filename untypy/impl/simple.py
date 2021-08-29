@@ -1,3 +1,4 @@
+import abc
 from typing import Any, Optional, Callable
 
 from untypy.error import UntypyTypeError
@@ -9,7 +10,7 @@ from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, 
 class SimpleFactory(TypeCheckerFactory):
 
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
-        if type(annotation) is type:
+        if type(annotation) is type or type(annotation) is abc.ABCMeta:
             return SimpleChecker(annotation, ctx)
         else:
             return None
