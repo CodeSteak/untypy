@@ -3,17 +3,19 @@ import inspect
 import sys
 from collections import Generator
 from typing import Any, Optional
+from typing import Generator as OtherGenerator
 
 from untypy.error import UntypyTypeError, UntypyAttributeError, Location
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from untypy.util import CompoundTypeExecutionContext, NoResponsabilityWrapper
 
-GeneratorType = type(Generator[None, None, None])
+GeneratorTypeA = type(Generator[None, None, None])
+GeneratorTypeB = type(OtherGenerator[None, None, None])
 
 
 class GeneratorFactory(TypeCheckerFactory):
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
-        if type(annotation) == GeneratorType and annotation.__origin__ == collections.abc.Generator:
+        if type(annotation) in [GeneratorTypeA, GeneratorTypeB] and annotation.__origin__ == collections.abc.Generator:
             if len(annotation.__args__) != 3:
                 raise ctx.wrap(UntypyAttributeError(f"Expected 3 type arguments for Generator."))
 

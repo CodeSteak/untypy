@@ -2,17 +2,19 @@ import collections.abc
 import inspect
 from collections import Iterator
 from typing import Any, Optional
+from typing import Iterator as OtherIterator
 
 from untypy.error import UntypyTypeError, UntypyAttributeError, Location
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from untypy.util import CompoundTypeExecutionContext
 
-IteratorType = type(Iterator[int])
+IteratorTypeA = type(Iterator[int])
+IteratorTypeB = type(OtherIterator[int])
 
 
 class IteratorFactory(TypeCheckerFactory):
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
-        if type(annotation) == IteratorType and annotation.__origin__ == collections.abc.Iterator:
+        if type(annotation) in [IteratorTypeA, IteratorTypeB] and annotation.__origin__ == collections.abc.Iterator:
             if len(annotation.__args__) != 1:
                 raise ctx.wrap(UntypyAttributeError(f"Expected 1 type arguments for iterator."))
 
