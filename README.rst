@@ -12,11 +12,12 @@ Current Features:
 - Literal
 - Tuple
 - Union
-- list
+- list, dict, set
 - Optional
 - Iterator
 - Generator
 - Checking of class methods
+- Protocols
 
 
 Examples
