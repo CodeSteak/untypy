@@ -202,14 +202,3 @@ class TestProtocolSpecific(unittest.TestCase):
             .create_from(Union[U2, U1], DummyDefaultCreationContext()) \
             .check_and_wrap(U2(), DummyExecutionContext()) \
             .meth()
-
-    def test_not_patching_if_signature_eq(self):
-        class Concrete:
-            @untypy.patch
-            def meth(self) -> B:
-                return B()
-
-        instance = ProtocolFactory().create_from(ProtoReturnB, DummyDefaultCreationContext()).check_and_wrap(Concrete(),
-                                                                                                             DummyExecutionContext())
-
-        self.assertEqual(type(instance), Concrete)
