@@ -6,8 +6,8 @@ from typing import Any, Optional, Callable, Union, Tuple
 from untypy.error import UntypyTypeError, UntypyAttributeError, Frame, Location
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext, WrappedFunction, \
     WrappedFunctionContextProvider
-
 # These Types are prefixed with an underscore...
+from untypy.util import ArgumentExecutionContext, ReturnExecutionContext
 
 CallableTypeOne = type(Callable[[], None])
 CallableTypeTwo = type(AbcCallable[[], None])
@@ -66,14 +66,20 @@ class TypedCallable(Callable, WrappedFunction):
     return_checker: TypeChecker
     argument_checker: list[TypeChecker]
     inner: Callable
+    fn: Callable
     ctx: ExecutionContext
 
     def __init__(self, inner: Callable, return_checker: TypeChecker,
                  argument_checker: list[TypeChecker], ctx: ExecutionContext):
+        # unwrap if wrapped function
+        self.ResponsibilityType = None
+        if hasattr(inner, '__wf'):
+            inner = getattr(inner, '__wf')
         self.inner = inner
         self.return_checker = return_checker
         self.argument_checker = argument_checker
         self.ctx = ctx
+        self.fn = WrappedFunction.find_original(self.inner)
         setattr(self, '__wf', self)
 
     def __call__(self, *args, **kwargs):
@@ -86,8 +92,18 @@ class TypedCallable(Callable, WrappedFunction):
             new_args.append(res)
             i += 1
 
-        ret = self.inner(*new_args, **kwargs)
-        ret = self.return_checker.check_and_wrap(ret, TypedCallableReturnExecutionContext(self.ctx, self))
+        if isinstance(self.inner, WrappedFunction):
+            (args, kwargs, bind2) = self.inner.wrap_arguments(lambda n:
+                                                              TypedCallableIncompatibleSingature(self, n,
+                                                                                                 caller,
+                                                                                                 self.ctx),
+                                                              args, kwargs)
+
+        ret = self.fn(*new_args, **kwargs)
+        if isinstance(self.inner, WrappedFunction):
+            ret = self.inner.wrap_return(ret, bind2, TypedCallableReturnExecutionContext(self.ctx, self, True))
+
+        ret = self.return_checker.check_and_wrap(ret, TypedCallableReturnExecutionContext(self.ctx, self, False))
         return ret
 
     def get_original(self):
@@ -106,15 +122,65 @@ class TypedCallable(Callable, WrappedFunction):
     def checker_for(self, name: str) -> TypeChecker:
         raise NotImplementedError
 
+
+class TypedCallableIncompatibleSingature(ExecutionContext):
+
+    def __init__(self, tc: TypedCallable, arg_name: str, caller, upper: ExecutionContext):
+        self.arg_name = arg_name
+        self.tc = tc
+        self.upper = upper
+        self.caller = caller
+
+    def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        (original_expected, _ind) = err.next_type_and_indicator()
+        err = ArgumentExecutionContext(self.tc.inner, None, self.arg_name).wrap(err)
+
+        func_decl = WrappedFunction.find_location(self.tc.inner)
+
+        name = WrappedFunction.find_original(self.tc.inner).__name__
+
+        (decl, ind) = err.next_type_and_indicator()
+        err = err.with_frame(Frame(
+            decl,
+            ind,
+            declared=None,
+            responsable=func_decl
+        ))
+
+        previous_chain = UntypyTypeError(
+            f"def {name}{self.tc.inner.describe()}",
+            f"{self.tc.describe()}"
+        )
+        (decl, ind) = previous_chain.next_type_and_indicator()
+        previous_chain = previous_chain.with_frame(Frame(
+            decl,
+            ind,
+            declared=func_decl,
+            responsable=None
+        ))
+
+        err = err.with_note(
+            f"The argument '{self.arg_name}' of method '{name}' violates the signature of {self.tc.describe()}.")
+
+        previous_chain = self.upper.wrap(previous_chain)
+
+        return err.with_previous_chain(previous_chain)
+
+
 class TypedCallableReturnExecutionContext(ExecutionContext):
     upper: ExecutionContext
     fn: TypedCallable
 
-    def __init__(self, upper: ExecutionContext, fn: TypedCallable):
+    def __init__(self, upper: ExecutionContext, fn: TypedCallable, invert: bool):
         self.upper = upper
         self.fn = fn
+        self.invert = invert
 
     def wrap(self, err: UntypyTypeError) -> UntypyTypeError:
+        if self.invert:
+            err = ReturnExecutionContext(self.fn.inner).wrap(err)
+            return err
+
         (next_ty, indicator) = err.next_type_and_indicator()
 
         desc = lambda s: s.describe()
