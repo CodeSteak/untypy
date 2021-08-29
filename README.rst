@@ -1,7 +1,7 @@
 untypy
 ======
 
-A library for dynamic type checking in python. (soon)
+A library for dynamic type checking in python.
 
 Current Features:
 -----------------
@@ -17,15 +17,6 @@ Current Features:
 - Iterator
 - Generator
 - Checking of class methods
-
-Partially Implemented
----------------------
-- Async Functions (no unit tests)
-
-
-Dummy Implementation
---------------------
-currently none
 
 
 Examples
