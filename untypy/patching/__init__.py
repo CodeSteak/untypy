@@ -21,13 +21,22 @@ def patch_class(clas: type, cfg: Config):
         return clas
     GlobalPatchedList.add(clas)
 
-    ctx = DefaultCreationContext(
-        typevars=dict(),
-        declared_location=Location(
-            file=inspect.getfile(clas),
-            line_no=inspect.getsourcelines(clas)[1],
-            source_line="".join(inspect.getsourcelines(clas)[0]),
-        ), checkedpkgprefixes=cfg.checkedprefixes)
+    try:
+        ctx = DefaultCreationContext(
+            typevars=dict(),
+            declared_location=Location(
+                file=inspect.getfile(clas),
+                line_no=inspect.getsourcelines(clas)[1],
+                source_line="".join(inspect.getsourcelines(clas)[0]),
+            ), checkedpkgprefixes=cfg.checkedprefixes)
+    except TypeError:  # Built in types
+        ctx = DefaultCreationContext(
+            typevars=dict(),
+            declared_location=Location(
+                file="<not found>",
+                line_no=0,
+                source_line="<not found>",
+            ), checkedpkgprefixes=cfg.checkedprefixes)
 
     setattr(clas, '__patched', True)
 
