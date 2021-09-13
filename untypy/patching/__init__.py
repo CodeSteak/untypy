@@ -29,7 +29,7 @@ def patch_class(clas: type, cfg: Config):
                 line_no=inspect.getsourcelines(clas)[1],
                 source_line="".join(inspect.getsourcelines(clas)[0]),
             ), checkedpkgprefixes=cfg.checkedprefixes)
-    except TypeError:  # Built in types
+    except (TypeError, OSError) as e:  # Built in types
         ctx = DefaultCreationContext(
             typevars=dict(),
             declared_location=Location(
