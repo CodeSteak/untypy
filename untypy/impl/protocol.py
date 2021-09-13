@@ -183,7 +183,10 @@ def ProtocolWrapper(protocolchecker: ProtocolChecker, original: type,
         return getattr(me._ProtocolWrappedFunction__inner, name)
 
     def __setattr__(me, name, value):
-        return setattr(me._ProtocolWrappedFunction__inner, name, value)
+        if name == '_ProtocolWrappedFunction__inner':
+            super(type(me), me).__setattr__('_ProtocolWrappedFunction__inner', value)
+        else:
+            return setattr(me._ProtocolWrappedFunction__inner, name, value)
 
     list_of_attr['__init__'] = constructor
     list_of_attr['__getattr__'] = __getattr__  # allow access of attributes
