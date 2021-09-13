@@ -49,6 +49,20 @@ class TestSimple(unittest.TestCase):
         res = checker.check_and_wrap(child_a, DummyExecutionContext())
         self.assertIsNot(child_a, res)  # Wrapped with AWrapper
 
+    def test_attributes(self):
+        a = ChildOfA()
+        a.foo = 42
+
+        # Note: Attributes are not checked, but they need to be accessible
+
+        @untypy.patch
+        def m(x: A) -> None:
+            self.assertEqual(x.foo, 42)
+            x.foo = 43
+
+        m(a)
+        self.assertEqual(a.foo, 43)
+
     def test_wrap_negative(self):
         checker = SimpleFactory().create_from(A, DummyDefaultCreationContext())
 
