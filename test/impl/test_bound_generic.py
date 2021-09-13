@@ -92,7 +92,6 @@ class TestBoundGeneric(unittest.TestCase):
 
         (t, i) = cm.exception.next_type_and_indicator()
         i = i.rstrip()
-        print(cm.exception)
         self.assertEqual(t, "target(a: A[~T=int]) -> None")
         self.assertEqual(i, "          ^^^^^^^^^")
 
