@@ -126,6 +126,32 @@ class TestProtocolTestCommon(unittest.TestCase):
         self.assertEqual(cm.exception.last_responsable(), location_of(Concrete.meth))
         self.assertEqual(cm.exception.last_declared(), location_of(self.ProtoReturnB.meth))
 
+    def test_double_wrapping(self):
+        # there should only one layer of wrapping.
+
+        class EmptyProto(Protocol):
+            pass
+
+        class MProto(Protocol):
+            def m(self) -> int:
+                pass
+
+        class ConcreteMProto:
+            @untypy.patch
+            def m(self) -> int:
+                return 42
+
+        @untypy.patch
+        def a(p: EmptyProto) -> None:
+            b(p)
+
+        @untypy.patch
+        def b(p: MProto) -> None:
+            p.m()
+
+        # must not fail
+        a(ConcreteMProto())
+
 
 class TestProtocolGenerics(TestProtocolTestCommon):
     def setUp(self) -> None:

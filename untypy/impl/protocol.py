@@ -106,6 +106,10 @@ class ProtocolChecker(TypeChecker):
         return True
 
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
+        if hasattr(arg, '_ProtocolWrappedFunction__inner'):
+            # no double wrapping
+            arg = getattr(arg, '_ProtocolWrappedFunction__inner')
+
         if type(arg) in self.wrapper_types:
             return self.wrapper_types[type(arg)](arg, ctx)
         else:
