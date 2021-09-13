@@ -80,7 +80,9 @@ class WrappedFunction:
 
     @staticmethod
     def find_original(fn):
-        if isinstance(fn, WrappedFunction):
+        if hasattr(fn, '__original'):
+            return WrappedFunction.find_original(getattr(fn, '__original'))
+        elif isinstance(fn, WrappedFunction):
             return WrappedFunction.find_original(fn.get_original())
         elif hasattr(fn, '__wf'):
             return WrappedFunction.find_original(getattr(fn, '__wf').get_original())

@@ -1,7 +1,7 @@
 import inspect
 from collections import namedtuple
 from types import FunctionType
-from typing import Callable, Protocol
+from typing import Callable, Protocol, Optional
 
 from untypy.error import Location
 from untypy.impl import DefaultCreationContext
@@ -51,11 +51,35 @@ def wrap_function(fn: FunctionType, cfg: Config) -> Callable:
     if len(inspect.getfullargspec(fn).annotations) > 0:
         if cfg.verbose:
             print(f"Patching Function: {fn.__name__}")
+        try:
+            return TypedFunctionBuilder(fn, DefaultCreationContext(
+                typevars=dict(),
+                declared_location=Location.from_code(fn),
+                checkedpkgprefixes=cfg.checkedprefixes)).build()
+        except NameError:  # Argument Typ was not defined yet.
+            class CallableContainer:
+                inner: Optional[Callable]
 
-        return TypedFunctionBuilder(fn, DefaultCreationContext(
-            typevars=dict(),
-            declared_location=Location.from_code(fn),
-            checkedpkgprefixes=cfg.checkedprefixes)).build()
+            def lazy_typechecked_outer(c):
+                c.inner = None
+
+                def lazy_typechecked(*args, **kwargs):
+                    if c.inner is None:
+                        c.inner = TypedFunctionBuilder(fn, DefaultCreationContext(
+                            typevars=dict(),
+                            declared_location=Location.from_code(fn),
+                            checkedpkgprefixes=cfg.checkedprefixes)).build()
+                    return c.inner(*args, **kwargs)
+
+                return lazy_typechecked
+
+            w = lazy_typechecked_outer(CallableContainer())
+            setattr(w, '__wrapped__', fn)
+            setattr(w, '__original', fn)
+            setattr(w, '__name__', fn.__name__)
+            setattr(w, '__signature__', inspect.signature(fn))
+
+            return w
     else:
         return fn
 

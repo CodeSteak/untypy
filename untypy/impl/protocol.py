@@ -57,6 +57,7 @@ def get_proto_members(proto: type, ctx: CreationContext) -> Dict[
         if inspect.isfunction(member):
             member = WrappedFunction.find_original(member)
             signature = inspect.signature(member)
+            annotations = typing.get_type_hints(member, include_extras=True)
             checkers = {}
             for key in signature.parameters:
                 if key == 'self':
@@ -68,7 +69,7 @@ def get_proto_members(proto: type, ctx: CreationContext) -> Dict[
                             f"\Missing Annotation for argument '{key}' of function {member.__name__} "
                             f"in Protocol {proto.__name__}\n"))
 
-                    checker = ctx.find_checker(param.annotation)
+                    checker = ctx.find_checker(annotations[key])
                     if checker is None:
                         raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {param.annotation}\n"
                                                             f"for argument '{key}' of function {member.__name__} "
@@ -79,11 +80,16 @@ def get_proto_members(proto: type, ctx: CreationContext) -> Dict[
                 raise ctx.wrap(UntypyAttributeError(
                     f"\Missing Annotation for Return Value of function {member.__name__} "
                     f"in Protocol {proto.__name__}. Use 'None' if there is no return value.\n"))
-            return_checker = ctx.find_checker(signature.return_annotation)
+            return_annotation = annotations['return']
+            if return_annotation is proto:  # Self as Return Type would led to endless recursion
+                return_checker = SimpleInstanceOfChecker(proto, None)
+            else:
+                return_checker = ctx.find_checker(return_annotation)
+
             if return_checker is None:
                 raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {signature.return_annotation}\n"
                                                     f"for Return Value of function {member.__name__} "
-                                                    f"in Protocol {proto.__name__}.\n"))
+                                                    f"in Protocol-Like {proto.__name__}.\n"))
             fc = None
             if hasattr(member, '__fc'):
                 fc = getattr(member, '__fc')
@@ -359,3 +365,20 @@ class ProtocolArgumentExecutionContext(ExecutionContext):
         # err = err.with_inverted_responsibility_type()
 
         return err.with_previous_chain(previous_chain)
+
+
+class SimpleInstanceOfChecker(TypeChecker):
+    def __init__(self, annotation: type, ctx: CreationContext):
+        self.annotation = annotation
+
+    def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
+        if isinstance(arg, self.annotation):
+            return arg
+        else:
+            raise ctx.wrap(UntypyTypeError(arg, self.describe()))
+
+    def describe(self) -> str:
+        return self.annotation.__name__
+
+    def base_type(self) -> Any:
+        return [self.annotation]

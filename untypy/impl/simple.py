@@ -20,7 +20,6 @@ class ParentProtocolChecker(ProtocolChecker):
     def protocol_type(self) -> str:
         return "Parent"
 
-
 class SimpleChecker(TypeChecker):
     annotation: type
     always_wrap: bool = False
