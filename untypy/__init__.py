@@ -26,8 +26,7 @@ def just_install_hook(prefixes=[]):
 
 
 def just_transform(source, modname, symbol='exec'):
-    tree = compile(source, modname, symbol, flags=ast.PyCF_ONLY_AST,
-                   dont_inherit=True, optimize=-1)
+    tree = compile(source, modname, symbol, flags=ast.PyCF_ONLY_AST, dont_inherit=True, optimize=-1)
     transform_tree(tree)
     return tree
 
