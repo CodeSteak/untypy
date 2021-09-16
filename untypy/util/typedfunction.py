@@ -36,12 +36,12 @@ class TypedFunctionBuilder(WrappedFunction):
         for key in checked_keys:
             if self.signature.parameters[key].annotation is inspect.Parameter.empty:
                 raise ctx.wrap(
-                    UntypyAttributeError(f"\Missing Annotation for argument '{key}' of function {inner.__name__}\n"
-                                         "Partial Annotation are not supported."))
+                    UntypyAttributeError(f"Missing annotation for argument '{key}' of function {inner.__name__}\n"
+                                         "Partial annotation are not supported."))
             annotation = annotations[key]
             checker = ctx.find_checker(annotation)
             if checker is None:
-                raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {annotation}\n"
+                raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported type annotation: {annotation}\n"
                                                     f"\tin argument '{key}'"))
             else:
                 checkers[key] = checker
@@ -51,13 +51,13 @@ class TypedFunctionBuilder(WrappedFunction):
         else:
             if not 'return' in annotations:
                 raise ctx.wrap(
-                    UntypyAttributeError(f"\Missing Annotation for return value of function {inner.__name__}\n"
-                                         "Partial Annotation are not supported. Use 'None' or 'NoReturn'"
+                    UntypyAttributeError(f"Missing annotation for return value of function {inner.__name__}\n"
+                                         "Partial annotation are not supported. Use 'None' or 'NoReturn'"
                                          "for specifying no return value."))
             annotation = annotations['return']
             return_checker = ctx.find_checker(annotation)
             if return_checker is None:
-                raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {annotation}\n"
+                raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported type annotation: {annotation}\n"
                                                     f"\tin return"))
 
             checkers['return'] = return_checker
@@ -78,7 +78,7 @@ class TypedFunctionBuilder(WrappedFunction):
             return ret
 
         if inspect.iscoroutine(self.inner):
-            raise UntypyAttributeError("Async Functions are currently not supported.")
+            raise UntypyAttributeError("Async functions are currently not supported.")
         else:
             w = wrapper
 

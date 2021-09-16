@@ -66,20 +66,20 @@ def get_proto_members(proto: type, ctx: CreationContext) -> Dict[
                     param = signature.parameters[key]
                     if param.annotation is inspect.Parameter.empty:
                         raise ctx.wrap(UntypyAttributeError(
-                            f"\Missing Annotation for argument '{key}' of function {member.__name__} "
-                            f"in Protocol {proto.__name__}\n"))
+                            f"Missing annotation for argument '{key}' of function {member.__name__} "
+                            f"in protocol {proto.__name__}\n"))
 
                     checker = ctx.find_checker(annotations[key])
                     if checker is None:
-                        raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {param.annotation}\n"
+                        raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported type annotation: {param.annotation}\n"
                                                             f"for argument '{key}' of function {member.__name__} "
-                                                            f"in Protocol {proto.__name__}.\n"))
+                                                            f"in protocol {proto.__name__}.\n"))
                     checkers[key] = checker
 
             if signature.return_annotation is inspect.Parameter.empty:
                 raise ctx.wrap(UntypyAttributeError(
-                    f"\Missing Annotation for Return Value of function {member.__name__} "
-                    f"in Protocol {proto.__name__}. Use 'None' if there is no return value.\n"))
+                    f"Missing annotation for return value of function {member.__name__} "
+                    f"in protocol {proto.__name__}. Use 'None' if there is no return value.\n"))
             return_annotation = annotations['return']
             if return_annotation is proto:  # Self as Return Type would led to endless recursion
                 return_checker = SimpleInstanceOfChecker(proto, None)
@@ -87,9 +87,9 @@ def get_proto_members(proto: type, ctx: CreationContext) -> Dict[
                 return_checker = ctx.find_checker(return_annotation)
 
             if return_checker is None:
-                raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported Type Annotation: {signature.return_annotation}\n"
-                                                    f"for Return Value of function {member.__name__} "
-                                                    f"in Protocol-Like {proto.__name__}.\n"))
+                raise ctx.wrap(UntypyAttributeError(f"\n\tUnsupported type annotation: {signature.return_annotation}\n"
+                                                    f"for return value of function {member.__name__} "
+                                                    f"in protocol-like {proto.__name__}.\n"))
             fc = None
             if hasattr(member, '__fc'):
                 fc = getattr(member, '__fc')
@@ -158,7 +158,7 @@ def ProtocolWrapper(protocolchecker: ProtocolChecker, original: type,
                 expected=protocolchecker.describe(),
                 given=original.__name__
             )).with_note(
-                f"Type {original.__name__} does not meet the requirements of Protocol {protocolchecker.proto.__name__}. It is missing the function '{fnname}'")
+                f"Type {original.__name__} does not meet the requirements of protocol {protocolchecker.proto.__name__}. It is missing the function '{fnname}'")
 
         original_fn = getattr(original, fnname)
         try:
@@ -177,7 +177,7 @@ def ProtocolWrapper(protocolchecker: ProtocolChecker, original: type,
                     expected=protocolchecker.describe(),
                     given=original.__name__
                 )).with_note(
-                    f"Type {original.__name__} does not meet the requirements of Protocol {protocolchecker.proto.__name__}. The signature of '{fnname}' does not match. Missing required parameter {param}")
+                    f"Type {original.__name__} does not meet the requirements of protocol {protocolchecker.proto.__name__}. The signature of '{fnname}' does not match. Missing required parameter {param}")
 
         list_of_attr[fnname] = ProtocolWrappedFunction(original_fn, sig, argdict, protocolchecker, fc).build()
 
