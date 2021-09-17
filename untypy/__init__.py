@@ -26,12 +26,13 @@ def just_install_hook(prefixes=[]):
 
 
 def just_transform(source, modname, symbol='exec'):
-    tree = compile(source, modname, symbol, ast.PyCF_ONLY_AST,
-                   dont_inherit=True, optimize=-1)
-    UntypyAstTransformer().visit(tree)
-    ast.fix_missing_locations(tree)
+    tree = compile(source, modname, symbol, flags=ast.PyCF_ONLY_AST, dont_inherit=True, optimize=-1)
+    transform_tree(tree)
     return tree
 
+def transform_tree(tree):
+    UntypyAstTransformer().visit(tree)
+    ast.fix_missing_locations(tree)
 
 def enable(*, recursive: bool = True, root: Union[ModuleType, str, None] = None, prefixes: list[str] = []) -> None:
     global GlobalConfig
