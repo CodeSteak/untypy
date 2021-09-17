@@ -1,6 +1,5 @@
+import unittest
 from typing import Generic, TypeVar, NoReturn, Tuple
-
-from twisted.trial import unittest
 
 import untypy
 from untypy.error import UntypyTypeError
