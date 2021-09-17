@@ -77,13 +77,14 @@ class DefaultCreationContext(CreationContext):
         tv.update(typevars)
         return DefaultCreationContext(tv, self.declared, self.checkedpkgprefixes)
 
-    def should_be_type_checked(self, annotation: type) -> bool:
+    def should_be_inheritance_checked(self, annotation: type) -> bool:
         m = inspect.getmodule(annotation)
-        if m.__name__ in self.checkedpkgprefixes:
-            return True
 
         for pkgs in self.checkedpkgprefixes:
-            if m.__name__.startswith(pkgs + ".") or pkgs == "":
+            # Inheritance should be checked on types
+            # when the type's module or its parent lies in the "user code".
+            # Inheritance of types of extern modules should be not be checked.
+            if m.__name__ == pkgs or m.__name__.startswith(pkgs + "."):
                 return True
 
         return False

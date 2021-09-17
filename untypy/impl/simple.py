@@ -30,7 +30,7 @@ class SimpleChecker(TypeChecker):
         self.always_wrap = False
 
         # use protocol like wrapping only if there are some signatures
-        if ctx.should_be_type_checked(annotation):
+        if ctx.should_be_inheritance_checked(annotation):
             if hasattr(annotation, '__patched'):
                 p = ParentProtocolChecker(annotation, ctx)
                 self.parent_checker = p.check_and_wrap

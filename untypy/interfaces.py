@@ -25,7 +25,7 @@ class CreationContext:
     def with_typevars(self, typevars: dict[TypeVar, Any]) -> CreationContext:
         raise NotImplementedError
 
-    def should_be_type_checked(self, annotation: type) -> bool:
+    def should_be_inheritance_checked(self, annotation: type) -> bool:
         raise NotImplementedError
 
 

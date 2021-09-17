@@ -117,3 +117,14 @@ class TestSimple(unittest.TestCase):
 
         # this must be fine: Names of Signatures differ.
         UnionFactory().create_from(Union[U3, U4], DummyDefaultCreationContext())
+
+    def test_no_inheritance_checking_of_builtins(self):
+        class SubInt(int):
+            pass
+
+        @untypy.patch
+        def take_number(number: int) -> None:
+            # SubInt should not be wrapped.
+            self.assertEqual(type(number), SubInt)
+
+        take_number(SubInt("42"))
