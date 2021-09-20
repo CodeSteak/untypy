@@ -9,7 +9,7 @@ LiteralType = type(Literal[42])
 class LiteralFactory(TypeCheckerFactory):
 
     def create_from(self, annotation: Any, ctx: CreationContext) -> Optional[TypeChecker]:
-        if type(annotation) is LiteralType:
+        if type(annotation) is LiteralType and annotation.__origin__ == Literal:
             return LiteralChecker(annotation.__args__)
         else:
             return None
