@@ -20,6 +20,10 @@ class ParentProtocolChecker(ProtocolChecker):
     def protocol_type(self) -> str:
         return "Parent"
 
+def simpleTypeCompat(x: Any, ty: type):
+    xTy = type(x)
+    return xTy is ty or (ty is float and xTy is int)
+
 class SimpleChecker(TypeChecker):
     annotation: type
     always_wrap: bool = False
@@ -55,7 +59,7 @@ class SimpleChecker(TypeChecker):
         return True
 
     def check_and_wrap(self, arg: Any, ctx: ExecutionContext) -> Any:
-        if type(arg) is self.annotation and not self.always_wrap:
+        if simpleTypeCompat(arg, self.annotation) and not self.always_wrap:
             return arg
         if isinstance(arg, self.annotation):
             if self.parent_checker is None:
