@@ -128,3 +128,9 @@ class TestSimple(unittest.TestCase):
             self.assertEqual(type(number), SubInt)
 
         take_number(SubInt("42"))
+
+    def test_int_as_float(self):
+        @untypy.patch
+        def f(x: float) -> float:
+            return x + 1
+        self.assertEqual(f(1), 2)
