@@ -5,7 +5,7 @@ from test.util import DummyExecutionContext, DummyDefaultCreationContext
 from untypy.error import UntypyTypeError, UntypyAttributeError
 from untypy.impl.dummy_delayed import DummyDelayedType
 from untypy.impl.union import UnionFactory
-
+import untypy
 
 class TestUnion(unittest.TestCase):
 
@@ -57,3 +57,15 @@ class TestUnion(unittest.TestCase):
             checker = UnionFactory().create_from(Union[int, Callable[[int], str],
                                                        Union[Callable[[str], str], list[int]]],
                                                  DummyDefaultCreationContext())
+
+    def test_union(self):
+        @untypy.patch
+        def f(x: Union[str, float]) -> Union[str, float]:
+            return x
+        self.assertEqual(f(1), 1)
+        self.assertEqual(f(3.14), 3.14)
+        self.assertEqual(f("x"), "x")
+        with self.assertRaises(UntypyTypeError):
+            f(None)
+        with self.assertRaises(UntypyTypeError):
+            f([1])
