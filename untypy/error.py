@@ -118,6 +118,8 @@ class ResponsibilityType(Enum):
         else:
             return ResponsibilityType.IN
 
+def join_lines(l: list[str]) -> str:
+    return '\n'.join([x.rstrip() for x in l])
 
 class UntypyTypeError(TypeError):
     given: Any
@@ -196,32 +198,35 @@ class UntypyTypeError(TypeError):
             if f.declared is not None and str(f.declared) not in declared_locs:
                 declared_locs.append(str(f.declared))
 
-        cause = '\n'.join(responsable_locs)
-        declared = '\n'.join(declared_locs)
+        cause = join_lines(responsable_locs)
+        declared = join_lines(declared_locs)
 
         (ty, ind) = self.next_type_and_indicator()
 
         inside = ""
         if self.expected != ty:
-            inside = f"inside of {ty}\n" \
-                     f"          {ind}\n"
+            inside = f"inside of {ty.rstrip()}\n" \
+                     f"          {ind.rstrip()}\n"
 
         if self.previous_chain is None:
             previous_chain = ""
         else:
             previous_chain = self.previous_chain.__str__()
 
-        notes = '\n'.join(self.notes)
+        notes = join_lines(self.notes)
         if len(notes) > 0:
             notes = f"{notes}\n\n"
 
         given = repr(self.given)
-        return (f"{previous_chain}\n{notes}given: {given}\n"
-                f"expected: {self.expected}\n"
-                f"          {self.expected_indicator}\n\n"
+        expected = self.expected.strip()
+        if expected != 'None':
+            expected = f'value of type {expected}'
+        return (f"{previous_chain}\n{notes}given: {given.rstrip()}\n"
+                f"expected: {expected}\n"
+                f"          {self.expected_indicator.rstrip()}\n\n"
                 f"{inside}"
-                f"declared at: \n{declared}\n\n"
-                f"caused by: \n{cause}")
+                f"declared at:\n{declared}\n\n"
+                f"caused by:\n{cause}")
 
 
 class UntypyAttributeError(AttributeError):
