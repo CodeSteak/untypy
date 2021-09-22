@@ -139,10 +139,10 @@ class ProtocolChecker(TypeChecker):
         if len(desc) > 0:
             return f"{self.proto.__name__}[" + (', '.join(desc)) + "]"
         else:
-            return f"{self.proto.__name__}({self.protocol_type()})"
+            return f"{self.proto.__name__}"
 
     def protocol_type(self) -> str:
-        return f"Protocol"
+        return f"protocol"
 
     def protoname(self):
         return self.describe()

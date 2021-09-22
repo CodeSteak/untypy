@@ -208,10 +208,10 @@ class UntypyTypeError(TypeError):
         if previous_chain:
             previous_chain = previous_chain + "\n\n"
 
-        inside = ""
+        ctx = ""
         if self.expected != ty:
-            inside = f"by function {ty.rstrip()}\n" \
-                     f"            {ind.rstrip()}"
+            ctx = f"context: {ty.rstrip()}\n" \
+                  f"         {ind.rstrip()}"
 
         given = repr(self.given)
         expected = self.expected.strip()
@@ -220,7 +220,7 @@ class UntypyTypeError(TypeError):
         return (f"""{previous_chain}{notes}given:    {given.rstrip()}
 expected: {expected}
 
-{inside}
+{ctx}
 declared at: {declared}
 
 caused by: {cause}""")
