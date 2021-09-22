@@ -16,16 +16,17 @@ class Location:
         self.source_line = source_line
 
     def __str__(self):
-        buf = f"{self.file}:{self.line_no}\n"
-        for i, line in enumerate(self.source_line.splitlines()):
-            if i < 5:
-                buf += f"{'{:3}'.format(self.line_no + i)} | {line}\n"
-        if i >= 5:
-            buf += "    | ..."
+        buf = f"{self.file}:{self.line_no}"
+        if self.source_line:
+            for i, line in enumerate(self.source_line.splitlines()):
+                if i < 5:
+                    buf += f"\n{'{:3}'.format(self.line_no + i)} | {line}"
+            if i >= 5:
+                buf += "    | ..."
         return buf
 
     def __repr__(self):
-        return f"Location(file={self.file.__repr__()}, line_no={self.line_no.__repr__()}, source_line={self.source_line.__repr__()})"
+        return f"Location(file={self.file.__repr__()}, line_no={self.line_no.__repr__()}, source_line={repr(self.source_line)})"
 
     def __eq__(self, other):
         if not isinstance(other, Location):
@@ -60,7 +61,7 @@ class Location:
                 return Location(
                     file=stack.filename,
                     line_no=stack.lineno,
-                    source_line="<Source Not Found>"
+                    source_line=None
                 )
         else:  # assume sys._getframe(...)
             try:
@@ -74,7 +75,7 @@ class Location:
                 return Location(
                     file=stack.f_code.co_filename,
                     line_no=stack.f_lineno,
-                    source_line="<Source Not Found>"
+                    source_line=None
                 )
 
 
@@ -124,31 +125,24 @@ def join_lines(l: list[str]) -> str:
 class UntypyTypeError(TypeError):
     given: Any
     expected: str
-    expected_indicator: str
     frames: list[Frame]
     notes: list[str]
     previous_chain: Optional[UntypyTypeError]
     responsibility_type: ResponsibilityType
 
-    def __init__(self, given: Any, expected: str, expected_indicator: Optional[str] = None, frames: list[Frame] = [],
+    def __init__(self, given: Any, expected: str, frames: list[Frame] = [],
                  notes: list[str] = [],
                  previous_chain: Optional[UntypyTypeError] = None,
                  responsibility_type: ResponsibilityType = ResponsibilityType.IN):
-
         self.responsibility_type = responsibility_type
         self.given = given
         self.expected = expected
-        if expected_indicator is None:
-            expected_indicator = "^" * len(expected)
-
-        self.expected_indicator = expected_indicator
         self.frames = frames.copy()
         for frame in self.frames:
             if frame.responsibility_type is None:
                 frame.responsibility_type = responsibility_type
         self.notes = notes.copy()
         self.previous_chain = previous_chain
-
         super().__init__('\n' + self.__str__())
 
     def next_type_and_indicator(self) -> Tuple[str, str]:
@@ -160,19 +154,19 @@ class UntypyTypeError(TypeError):
 
     def with_frame(self, frame: Frame) -> UntypyTypeError:
         frame.responsibility_type = self.responsibility_type
-        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames + [frame],
+        return UntypyTypeError(self.given, self.expected, self.frames + [frame],
                                self.notes, self.previous_chain, self.responsibility_type)
 
     def with_previous_chain(self, previous_chain: UntypyTypeError):
-        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames,
+        return UntypyTypeError(self.given, self.expected, self.frames,
                                self.notes, previous_chain, self.responsibility_type)
 
     def with_note(self, note: str):
-        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames,
+        return UntypyTypeError(self.given, self.expected, self.frames,
                                self.notes + [note], self.previous_chain, self.responsibility_type)
 
     def with_inverted_responsibility_type(self):
-        return UntypyTypeError(self.given, self.expected, self.expected_indicator, self.frames,
+        return UntypyTypeError(self.given, self.expected, self.frames,
                                self.notes, self.previous_chain, self.responsibility_type.invert())
 
     def last_responsable(self):
@@ -203,30 +197,33 @@ class UntypyTypeError(TypeError):
 
         (ty, ind) = self.next_type_and_indicator()
 
-        inside = ""
-        if self.expected != ty:
-            inside = f"inside of {ty.rstrip()}\n" \
-                     f"          {ind.rstrip()}\n"
+        notes = join_lines(self.notes)
+        if notes:
+            notes = notes + "\n\n"
 
         if self.previous_chain is None:
             previous_chain = ""
         else:
             previous_chain = self.previous_chain.__str__()
+        if previous_chain:
+            previous_chain = previous_chain + "\n\n"
 
-        notes = join_lines(self.notes)
-        if len(notes) > 0:
-            notes = f"{notes}\n\n"
+        inside = ""
+        if self.expected != ty:
+            inside = f"by function {ty.rstrip()}\n" \
+                     f"            {ind.rstrip()}"
 
         given = repr(self.given)
         expected = self.expected.strip()
         if expected != 'None':
             expected = f'value of type {expected}'
-        return (f"{previous_chain}\n{notes}given: {given.rstrip()}\n"
-                f"expected: {expected}\n"
-                f"          {self.expected_indicator.rstrip()}\n\n"
-                f"{inside}"
-                f"declared at:\n{declared}\n\n"
-                f"caused by:\n{cause}")
+        return (f"""{previous_chain}{notes}given:    {given.rstrip()}
+expected: {expected}
+
+{inside}
+declared at: {declared}
+
+caused by: {cause}""")
 
 
 class UntypyAttributeError(AttributeError):
@@ -243,31 +240,3 @@ class UntypyAttributeError(AttributeError):
     def __str__(self):
         locations = '\n'.join(map(str, self.locations))
         return f"{self.message}\n{locations}"
-
-# given: 43
-# but expected: str
-# in the contract of foo (file.py, line 2)
-#
-# def foo(i: int, fun: Callable[[int], str]) -> List[str]:
-#                                      ^^^
-#
-# The contract violation was triggered by the code calling foo (file.py, line 6)
-# print(’Not OK: ’ + str(foo(42, inc)))
-#                                ^^^
-#
-#
-# /////////////////////////////////////////////////
-# given: 42
-# but expected: str
-#
-# in the contract of foo (file.py, line 2)
-#
-# def bar(xx : int) -> Callable[[int], str]
-#                                      ^^^
-# caused by (file.py, line 2)
-#
-# return lambda x: x
-#        ^^^^^^^^^^^
-#
-# The contract violation was triggered by the code calling foo (file.py, line 6)
-#     <Stacktrace>
