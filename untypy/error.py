@@ -206,7 +206,7 @@ class UntypyTypeError(TypeError):
         else:
             previous_chain = self.previous_chain.__str__()
         if previous_chain:
-            previous_chain = previous_chain + "\n\n"
+            previous_chain = previous_chain.strip() + "\n\n"
 
         ctx = ""
         if self.expected != ty:
@@ -217,7 +217,8 @@ class UntypyTypeError(TypeError):
         expected = self.expected.strip()
         if expected != 'None':
             expected = f'value of type {expected}'
-        return (f"""{previous_chain}{notes}given:    {given.rstrip()}
+        return (f"""
+{previous_chain}{notes}given:    {given.rstrip()}
 expected: {expected}
 
 {ctx}
