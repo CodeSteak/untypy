@@ -15,6 +15,7 @@ from .literal import LiteralFactory
 from .none import NoneFactory
 from .optional import OptionalFactory
 from .protocol import ProtocolFactory
+from .sequence import SequenceFactory
 from .simple import SimpleFactory
 from .tuple import TupleFactory
 from .union import UnionFactory
@@ -33,6 +34,7 @@ _FactoryList = [
     OptionalFactory(),  # must be higher then Union
     UnionFactory(),
     TupleFactory(),
+    SequenceFactory(),
     DummyDelayedFactory(),
     GeneratorFactory(),
     IteratorFactory(),

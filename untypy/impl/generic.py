@@ -72,7 +72,6 @@ class BoundTypeVarCtx(ExecutionContext):
 
         if nt == err.expected and nt == self.bv.inner.describe():
             err.expected = self.bv.describe()
-            err.expected_indicator = "^" * len(self.bv.describe())
 
         return self.upper.wrap(err)
 

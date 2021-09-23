@@ -121,29 +121,37 @@ class TypedList(list):
     def insert(self, index, obj) -> None:
         caller = sys._getframe(1)
         ctx = ListCallerExecutionContext(caller, self.declared)
-
         return self.inner.insert(index, self.checker.check_and_wrap(obj, ctx))
 
+    # l += [...]
     def __iadd__(self, other):
         caller = sys._getframe(1)
         ctx = ListCallerExecutionContext(caller, self.declared)
-
         self.inner.extend(list(map(lambda x: self.checker.check_and_wrap(x, ctx), other)))
         return self
 
+    # l[i] = x
+    # l[i:j] = [...]
     def __setitem__(self, idx, value):
         caller = sys._getframe(1)
         ctx = ListCallerExecutionContext(caller, self.declared)
+        if isinstance(idx, slice):
+            self.inner.__setitem__(idx, list(map(lambda x: self.checker.check_and_wrap(x, ctx), value)))
+        else:
+            return self.inner.__setitem__(idx, self.checker.check_and_wrap(value, ctx))
 
-        return self.inner.__setitem__(idx, self.checker.check_and_wrap(value, ctx))
-
-    def __add__(self, *args, **kwargs):
+    # l + ...
+    def __add__(self, other):
         # Caller Context
-        return self.inner.__add__(*args, **kwargs)
+        return self.inner + other
+
+    # ... + l
+    def __radd__(self, other):
+        return other + self.inner
 
     def pop(self, *args, **kwargs):
         ret = self.inner.pop(*args, **kwargs)
-        return self.checker.check_and_wrap(ret, self.ctx)
+        return ret
 
     # Delete, Copy, ...
     def index(self, *args, **kwargs):
