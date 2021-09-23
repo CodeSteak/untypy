@@ -55,7 +55,7 @@ InterfaceMapping = {
     List: (WList,),
     set: (WSet,),
     Set: (WSet,),
-    Iterable: (WIterable),
+    Iterable: (WIterable,),
 }
 
 
