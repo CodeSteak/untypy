@@ -38,8 +38,8 @@ class TestProtocolTestCommon(unittest.TestCase):
         self.sig_b = "B"
         self.ProtoReturnB = ProtoReturnB
         self.ProtoReceiveB = ProtoReceiveB
-        self.ProtoReturnBName = "ProtoReturnB(Protocol)"
-        self.ProtoReceiveBName = "ProtoReceiveB(Protocol)"
+        self.ProtoReturnBName = "ProtoReturnB"
+        self.ProtoReceiveBName = "ProtoReceiveB"
         self.checker_return = ProtocolFactory().create_from(ProtoReturnB, DummyDefaultCreationContext())
         self.checker_arg = ProtocolFactory().create_from(ProtoReceiveB, DummyDefaultCreationContext())
 
