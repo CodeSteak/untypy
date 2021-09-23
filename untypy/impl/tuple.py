@@ -51,9 +51,9 @@ class TupleChecker(TypeChecker):
 
     def describe(self) -> str:
         desc = lambda s: s.describe()
-        return f"Tuple[{', '.join(map(desc, self.inner))}]"
+        return f"tuple[{', '.join(map(desc, self.inner))}]"
 
 
 class TupleExecutionContext(CompoundTypeExecutionContext):
     def name(self):
-        return "Tuple"
+        return "tuple"
