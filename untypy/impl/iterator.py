@@ -52,7 +52,7 @@ class IteratorChecker(TypeChecker):
         return f"Iterator[{self.inner.describe()}]"
 
     def base_type(self) -> list[Any]:
-        return [IteratorType]
+        return [IteratorTypeA]
 
 
 class TypedIteratorExecutionContext(CompoundTypeExecutionContext):
