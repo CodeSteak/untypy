@@ -2,6 +2,7 @@ from collections import Iterator, Iterable
 from typing import TypeVar, Optional, Any, Generic, Dict, List, Set
 
 from untypy.error import UntypyAttributeError, UntypyTypeError
+from untypy.impl.protocol import ProtocolChecker
 from untypy.impl.wrappedclass import WrappedType
 from untypy.interfaces import TypeCheckerFactory, TypeChecker, CreationContext, ExecutionContext
 from untypy.util import ReplaceTypeExecutionContext
@@ -77,13 +78,18 @@ class InterfaceFactory(TypeCheckerFactory):
             if len(inner_checkers) != len(bindings):
                 raise UntypyAttributeError(f"Expected {len(bindings)} type arguments inside of {annotation}")
 
-            name = f"{origin.__name__}[" + (', '.join(map(lambda t: t.describe(), inner_checkers))) + "]"
+            if type(origin) == type:
+                name = f"{origin.__name__}[" + (', '.join(map(lambda t: t.describe(), inner_checkers))) + "]"
 
-            bindings = dict(zip(bindings, annotation.__args__))
-            ctx.with_typevars(bindings)
-            template = WrappedType(protocol, ctx.with_typevars(bindings), name=name, implementation_template=origin,
-                                   declared=ctx.declared_location())
-            return InterfaceChecker(origin, template, name)
+                bindings = dict(zip(bindings, annotation.__args__))
+                ctx.with_typevars(bindings)
+                template = WrappedType(protocol, ctx.with_typevars(bindings), name=name, implementation_template=origin,
+                                       declared=ctx.declared_location())
+                return InterfaceChecker(origin, template, name)
+            else:
+                # type(origin) == collection.abc.ABCMeta
+                return ProtocolChecker(protocol, ctx)
+
         else:
             return None
 
