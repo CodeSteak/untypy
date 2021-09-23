@@ -46,7 +46,7 @@ class VariadicTupleChecker(TypeChecker):
         return tuple(out)
 
     def base_type(self) -> Any:
-        return [self.inner.base_type()]
+        return [tuple]
 
     def describe(self) -> str:
         desc = self.inner.describe()
