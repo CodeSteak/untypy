@@ -1,6 +1,6 @@
 from typing import Any, Optional, Tuple
 
-from untypy.error import UntypyTypeError
+from untypy.error import UntypyTypeError, Frame
 from untypy.interfaces import TypeChecker, TypeCheckerFactory, CreationContext, ExecutionContext
 from untypy.util import CompoundTypeExecutionContext
 
