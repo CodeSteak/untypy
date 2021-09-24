@@ -1,6 +1,6 @@
 import inspect
 import re
-from collections import Callable
+from collections.abc import Callable
 from typing import Optional
 
 from untypy.error import UntypyAttributeError, UntypyTypeError, Frame

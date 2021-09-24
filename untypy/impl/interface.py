@@ -1,4 +1,4 @@
-from collections import Iterator, Iterable
+from collections.abc import Iterator, Iterable
 from typing import TypeVar, Optional, Any, Generic, Dict, List, Set
 
 from untypy.error import UntypyAttributeError, UntypyTypeError
