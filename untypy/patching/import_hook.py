@@ -1,6 +1,6 @@
 import ast
 import importlib
-from collections import Callable
+from collections.abc import Callable
 from importlib.abc import MetaPathFinder
 from importlib.machinery import SourceFileLoader
 from importlib.util import decode_source

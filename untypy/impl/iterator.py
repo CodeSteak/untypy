@@ -1,6 +1,6 @@
 import collections.abc
 import inspect
-from collections import Iterator
+from collections.abc import Iterator
 from typing import Any, Optional
 from typing import Iterator as OtherIterator
 

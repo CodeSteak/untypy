@@ -1,7 +1,7 @@
 import collections.abc
 import inspect
 import sys
-from collections import Generator
+from collections.abc import Generator
 from typing import Any, Optional
 from typing import Generator as OtherGenerator
 
