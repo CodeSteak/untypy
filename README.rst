@@ -1,3 +1,8 @@
+⚠️  Currently maintained in `skogsbaer/write-your-python-program`_. ⚠️ 
+
+.. _skogsbaer/write-your-python-program: https://github.com/skogsbaer/write-your-python-program/tree/master/python/deps/untypy
+
+
 untypy
 ======
 
